@@ -117,6 +117,12 @@ enum FormatoRuta {
             .formatted(.measurement(width: .abbreviated, usage: .road))
     }
 
+    /// La interfaz usa unidades cortas; la voz las dice completas en español: «350 pies».
+    static func distanciaParaVoz(_ metros: CLLocationDistance) -> String {
+        Measurement(value: metros, unit: UnitLength.meters)
+            .formatted(.measurement(width: .wide, usage: .road).locale(Locale(identifier: "es-US")))
+    }
+
     /// «10:42 a. m.» según la configuración del iPhone.
     static func hora(_ fecha: Date) -> String {
         fecha.formatted(date: .omitted, time: .shortened)
