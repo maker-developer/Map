@@ -30,7 +30,8 @@ struct MapaPrincipal: View {
         case .libre: [.height(HojaBusqueda.alturaMinima), .height(HojaBusqueda.alturaFicha), .medium, .large]
         case .lugar: [.height(Self.alturaLugar), .medium]
         case .ruta: [.height(Self.alturaLugar), .medium, .large]
-        case .navegando: [.height(Self.alturaNavegacion)]
+        // Navegando: la barra, y al subirla las opciones (resumen, pasos, compartir llegada…).
+        case .navegando: [.height(Self.alturaNavegacion), .medium]
         }
     }
 
@@ -69,7 +70,16 @@ struct MapaPrincipal: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        // Navegando y con el mapa movido a mano: «Volver a centrar», como Apple y Google.
+        // Navegando: la velocidad actual (como Google Maps)…
+        .overlay(alignment: .bottomLeading) {
+            if navegador.fase == .navegando, navegador.siguiendo, !navegador.llegaste {
+                BurbujaVelocidad(metrosPorSegundo: navegador.velocidad)
+                    .padding(.leading, 16)
+                    .padding(.bottom, 150)
+                    .transition(.opacity)
+            }
+        }
+        // …y con el mapa movido a mano, «Volver a centrar», como Apple y Google.
         .overlay(alignment: .bottomLeading) {
             if navegador.fase == .navegando, !navegador.siguiendo {
                 Button {
@@ -132,7 +142,8 @@ struct MapaPrincipal: View {
             .animation(.spring(response: 0.38, dampingFraction: 0.86), value: navegador.fase)
             .presentationDetents(alturas, selection: $hoja)
             .presentationDragIndicator(.visible)
-            .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            // El mapa siempre se puede tocar al navegar (antes quedaba bloqueado detrás de la barra).
+            .presentationBackgroundInteraction(navegador.fase == .navegando ? .enabled : .enabled(upThrough: .medium))
             .interactiveDismissDisabled()
         }
         .onAppear(perform: preparar)
@@ -224,5 +235,29 @@ struct MapaPrincipal: View {
             .accessibilityLabel("Mi ubicación")
         }
         .vidrio(RoundedRectangle(cornerRadius: 24, style: .continuous), interactivo: true)
+    }
+}
+
+/// Velocidad actual en mph o km/h según la región del iPhone.
+private struct BurbujaVelocidad: View {
+    let metrosPorSegundo: Double
+
+    var body: some View {
+        let millas = Locale.current.measurementSystem == .us
+        let valor = metrosPorSegundo * (millas ? 2.23694 : 3.6)
+        VStack(spacing: -2) {
+            Text("\(Int(valor.rounded()))")
+                .font(.title2.weight(.bold))
+                .monospacedDigit()
+                .contentTransition(.numericText())
+            Text(millas ? "mph" : "km/h")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .frame(width: 62, height: 62)
+        .vidrio(Circle())
+        .animation(.snappy, value: Int(valor.rounded()))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Velocidad \(Int(valor.rounded())) \(millas ? "millas por hora" : "kilómetros por hora")")
     }
 }

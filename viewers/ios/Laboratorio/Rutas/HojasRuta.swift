@@ -462,7 +462,13 @@ struct HojaNavegacion: View {
             if navegador.llegaste {
                 llegada
             } else {
-                enCamino
+                VStack(spacing: 18) {
+                    enCamino
+                    ScrollView {
+                        opciones.padding(.bottom, 24)
+                    }
+                    .scrollIndicators(.hidden)
+                }
             }
         }
         .padding(.horizontal, 20)
@@ -509,6 +515,59 @@ struct HojaNavegacion: View {
                 .tint(.red)
                 .controlSize(.large)
         }
+    }
+
+    /// Al subir la barra (como Apple Maps): resumen de la ruta, compartir la llegada y los pasos.
+    private var opciones: some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 10) {
+                Button {
+                    navegador.resumen()
+                } label: {
+                    opcion(.ruta, "Resumen")
+                }
+                .buttonStyle(.plain)
+
+                if let restante = navegador.restante, let destino = navegador.destino {
+                    let hora = FormatoRuta.hora(Date().addingTimeInterval(restante.duracion))
+                    ShareLink(item: "Voy a \(destino.nombre). Llego a las \(hora) (\(FormatoRuta.duracion(restante.duracion))).") {
+                        opcion(.compartir, "Compartir llegada")
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button {
+                    navegador.voz.toggle()
+                } label: {
+                    opcion(navegador.voz ? .vozSi : .vozNo, navegador.voz ? "Voz" : "Sin voz")
+                }
+                .buttonStyle(.plain)
+            }
+
+            if let ruta = navegador.rutaElegida {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Próximos pasos")
+                        .font(.headline)
+                    ListaPasos(pasos: Array(ruta.pasos.dropFirst(navegador.pasoActual + 1)))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func opcion(_ icono: Lc, _ titulo: String) -> some View {
+        VStack(spacing: 6) {
+            Icono(icono, tamano: 20)
+            Text(titulo)
+                .font(.caption.weight(.medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+        .foregroundStyle(Color.blue)
+        .frame(maxWidth: .infinity, minHeight: 64)
+        .background(Color(uiColor: .secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(Rectangle())
     }
 
     private var llegada: some View {

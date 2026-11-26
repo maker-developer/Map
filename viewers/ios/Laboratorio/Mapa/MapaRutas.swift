@@ -124,7 +124,10 @@ extension MapaMapLibre.Coordinador {
     func encuadrar(en mapa: MLNMapView) {
         guard let navegador = padre.navegador else { return }
         let relleno = UIEdgeInsets(top: 110, left: 50, bottom: 430, right: 70)
-        if let ruta = navegador.rutaElegida, ruta.coordenadas.count > 1, navegador.fase == .ruta {
+        if let ruta = navegador.rutaElegida, ruta.coordenadas.count > 1,
+           navegador.fase == .ruta || navegador.fase == .navegando {
+            // Resumen al navegar: la ruta entera, sin el hueco de la flecha abajo.
+            if navegador.fase == .navegando { mapa.contentInset = .zero }
             let forma = MLNPolyline(coordinates: ruta.coordenadas, count: UInt(ruta.coordenadas.count))
             let camara = mapa.cameraThatFitsShape(forma, direction: 0, edgePadding: relleno)
             camara.pitch = 0
@@ -134,41 +137,44 @@ extension MapaMapLibre.Coordinador {
         }
     }
 
-    /// Cámara según la fase: al navegar, te sigue inclinada en tu sentido de marcha.
+    /// Cámara según la fase. Al navegar, la flecha va en el tercio de abajo (se ve más camino
+    /// por delante, como en Apple y Google) y la cámara la sigue sola; fuera de la navegación, normal.
     func aplicarFase(en mapa: MLNMapView) {
         guard let navegador = padre.navegador else { return }
-        // El indicador de ubicación de MapLibre ya se desliza entre posiciones (máxima precisión por defecto).
         let navegando = navegador.fase == .navegando
         mapa.showsUserHeadingIndicator = navegando
-
-        if navegando {
-            seguir(en: mapa)
-        } else if mapa.userTrackingMode != .none {
-            mapa.setUserTrackingMode(.none, animated: true, completionHandler: nil)
-        }
+        if mapa.userTrackingMode != .none { mapa.userTrackingMode = .none }
+        mapa.contentInset = navegando
+            ? UIEdgeInsets(top: mapa.bounds.height * 0.42, left: 0, bottom: 120, right: 0)
+            : .zero
+        if navegando { seguir(en: mapa, duracion: 0.8) }
     }
 
-    /// La cámara te sigue inclinada, en tu sentido de marcha, al zoom que pide la velocidad.
-    func seguir(en mapa: MLNMapView) {
-        guard let navegador = padre.navegador else { return }
-        ignorarCambioDeSeguimiento = true
-        mapa.setUserTrackingMode(.followWithCourse, animated: true) { [weak self] in
-            self?.ignorarCambioDeSeguimiento = false
-            let camara = mapa.camera
-            camara.pitch = 55
-            mapa.setCamera(camara, withDuration: 0.6, animationTimingFunction: CAMediaTimingFunction(name: .easeInEaseOut))
-        }
-        mapa.setZoomLevel(navegador.zoomNavegacion, animated: true)
-        zoomAplicado = navegador.zoomNavegacion
+    /// La cámara vuelve a seguirte («Volver a centrar» o al empezar).
+    func seguir(en mapa: MLNMapView, duracion: TimeInterval = 0.6) {
+        mapa.contentInset = UIEdgeInsets(top: mapa.bounds.height * 0.42, left: 0, bottom: 120, right: 0)
+        camaraNavegacion(en: mapa, duracion: duracion)
     }
 
-    /// El zoom acompaña a la velocidad, con transiciones suaves (solo si cambia lo suficiente).
-    func ajustarZoom(en mapa: MLNMapView) {
+    /// Cada posición nueva: la cámara se desliza (sin saltos) a tu sitio, en tu rumbo,
+    /// inclinada y al zoom que pide la velocidad. Lo hacemos nosotros (y no el seguimiento de
+    /// MapLibre) para controlar el zoom y que el mapa nunca quede bloqueado.
+    func camaraNavegacion(en mapa: MLNMapView, duracion: TimeInterval = 1.0) {
         guard let navegador = padre.navegador, navegador.fase == .navegando, navegador.siguiendo,
-              abs(navegador.zoomNavegacion - zoomAplicado) >= 0.3 else { return }
-        zoomAplicado = navegador.zoomNavegacion
-        mapa.setZoomLevel(navegador.zoomNavegacion, animated: true)
+              let aqui = navegador.ubicacion?.coordinate ?? mapa.userLocation?.location?.coordinate else { return }
+        let zoom = navegador.zoomNavegacion
+        // Metros que caben a lo ancho de la pantalla a ese zoom (teselas de 512 px).
+        let metrosPorPunto = 78_271.517 * cos(aqui.latitude * .pi / 180) / pow(2, zoom)
+        let ancho = max(mapa.bounds.width, 320) * metrosPorPunto
+        let camara = MLNMapCamera(lookingAtCenter: aqui, acrossDistance: ancho, pitch: 55, heading: navegador.rumbo)
+        moviendoPorApp = true
+        mapa.setCamera(camara, withDuration: duracion, animationTimingFunction: CAMediaTimingFunction(name: .linear)) { [weak self] in
+            self?.moviendoPorApp = false
+        }
     }
+
+    /// Ya no hace falta: el zoom va dentro de la cámara de navegación.
+    func ajustarZoom(en mapa: MLNMapView) {}
 
     /// Mantener pulsado: pin y ficha de ese punto (como Apple Maps).
     @objc func mantener(_ gesto: UILongPressGestureRecognizer) {

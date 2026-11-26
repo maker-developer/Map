@@ -229,7 +229,6 @@ struct MapaMapLibre: UIViewRepresentable {
                 c.versionCentrar = navegador.versionCentrar
                 if navegador.fase == .navegando { c.seguir(en: mapa) }
             }
-            c.ajustarZoom(en: mapa)
         }
 
         if centrarEnMi != c.centrarEnMi {
@@ -257,8 +256,9 @@ struct MapaMapLibre: UIViewRepresentable {
         var pinDestinoID: UUID?
         var versionCentrar = 0
         var zoomAplicado: Double = 0
-        /// Mientras el propio app cambia el seguimiento, no cuenta como «el usuario movió el mapa».
+        /// Mientras el propio app mueve la cámara, no cuenta como «el usuario movió el mapa».
         var ignorarCambioDeSeguimiento = false
+        var moviendoPorApp = false
 
         init(_ padre: MapaMapLibre) {
             self.vista3D = padre.vista3D
@@ -354,11 +354,16 @@ struct MapaMapLibre: UIViewRepresentable {
 
         func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {
             padre.navegador?.actualizar(ubicacion: userLocation?.location)
+            // Navegando: la cámara se desliza a la nueva posición.
+            camaraNavegacion(en: mapView)
         }
 
-        /// Si el usuario mueve el mapa con el dedo, MapLibre deja de seguir: se avisa para «Volver a centrar».
-        func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
-            guard mode == .none, !ignorarCambioDeSeguimiento else { return }
+        /// Si el usuario toca, arrastra, pellizca o gira el mapa al navegar, deja de seguirle
+        /// y aparece «Volver a centrar» (el mapa nunca queda bloqueado).
+        func mapView(_ mapView: MLNMapView, regionWillChangeWith reason: MLNCameraChangeReason, animated: Bool) {
+            let gestos: MLNCameraChangeReason = [.gesturePan, .gesturePinch, .gestureRotate, .gestureZoomIn,
+                                                 .gestureZoomOut, .gestureOneFingerZoom, .gestureTilt]
+            guard !reason.isDisjoint(with: gestos) else { return }
             padre.navegador?.dejarDeSeguir()
         }
 

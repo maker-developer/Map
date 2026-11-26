@@ -44,6 +44,9 @@ final class Navegador {
     private(set) var zoomNavegacion: Double = 17
     /// Sube al pedir «Volver a centrar».
     private(set) var versionCentrar = 0
+    /// Rumbo de marcha (último válido) y velocidad, para la cámara y la burbuja de velocidad.
+    private(set) var rumbo: CLLocationDirection = 0
+    private(set) var velocidad: CLLocationSpeed = 0
 
     /// Casa, Trabajo, guardados y recientes.
     let favoritos = Favoritos()
@@ -225,6 +228,22 @@ final class Navegador {
         }
     }
 
+    /// «Resumen»: ver la ruta entera (deja de seguir; «Volver a centrar» vuelve).
+    func resumen() {
+        siguiendo = false
+        versionEncuadre += 1
+    }
+
+    /// Rumbo aproximado entre dos puntos (para orientar la cámara antes de moverse).
+    static func rumbo(de a: CLLocationCoordinate2D, a b: CLLocationCoordinate2D) -> CLLocationDirection {
+        let la1 = a.latitude * .pi / 180, la2 = b.latitude * .pi / 180
+        let dl = (b.longitude - a.longitude) * .pi / 180
+        let y = sin(dl) * cos(la2)
+        let x = cos(la1) * sin(la2) - sin(la1) * cos(la2) * cos(dl)
+        let grados = atan2(y, x) * 180 / .pi
+        return grados < 0 ? grados + 360 : grados
+    }
+
     /// El usuario movió el mapa con el dedo: se deja de seguir.
     func dejarDeSeguir() {
         guard fase == .navegando, siguiendo else { return }
@@ -260,6 +279,13 @@ final class Navegador {
     func actualizar(ubicacion nueva: CLLocation?) {
         guard let nueva, nueva.horizontalAccuracy >= 0 else { return }
         ubicacion = nueva
+        velocidad = max(0, nueva.speed)
+        // El rumbo solo vale si te mueves; parado se mantiene el último (si no, la cámara gira sola).
+        if nueva.course >= 0, nueva.speed > 1 {
+            rumbo = nueva.course
+        } else if rumbo == 0, let siguiente = pasoSiguiente {
+            rumbo = Self.rumbo(de: nueva.coordinate, a: siguiente.ubicacion)
+        }
         // Como mucho un cálculo por segundo: suficiente para la voz y el banner, y no se traba.
         guard fase == .navegando, Date().timeIntervalSince(ultimoProgreso) >= 1 else { return }
         actualizarProgreso()
