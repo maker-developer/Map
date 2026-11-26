@@ -20,4 +20,4 @@ Cada ronda se prueba en el iPhone con Map Lab antes de pasar a la siguiente. El 
 | 12 | Nube en serio | Que el app use la nube por defecto y lleve solo una zona dentro | Dominio propio para R2, caché, versionado |
 | 13 | Más allá del condado | Estilo para la base continua | Base OpenStreetMap del sur de Florida (Broward, Monroe, Collier) bajo los datos del condado |
 
-Después: búsqueda de direcciones (`extras/search`), rutas a pie (`extras/routing`) e integración en Busdade.
+Después: navegación giro a giro con voz, negocios (OpenStreetMap u Overture) e integración en Busdade. El diseño de búsqueda y rutas está en `extras/search` y `extras/routing`.
