@@ -21,6 +21,20 @@ Los ejes hidrográficos nombrados y los centros de lagos nombrados complementan 
 
 La nube LiDAR del condado de 2021 publicada por NOAA cubre 615 millas cuadradas. Puede aportar terreno y clasificación de edificios en las áreas cubiertas. [NOAA Digital Coast](https://www.fisheries.noaa.gov/inport/item/76028)
 
+## Extensión regional al norte y sur
+
+`public/data/regional.pmtiles` agrega contexto de bajo detalle en Broward y Monroe para que la cobertura no termine en el borde de Miami-Dade. Se genera con `data/scripts/sur_florida.py`, a zoom 5–10. No contiene edificios ni reemplaza las capas detalladas del condado. El extracto cubre las geometrías de Broward, Miami-Dade y Monroe; los caminos regionales deben dibujarse debajo de las calles detalladas de Miami-Dade.
+
+| Capa | Fuente | Entidades / contrato |
+| --- | --- | --- |
+| `regional_land`, `regional_ocean` | [Natural Earth 1:10m Physical](https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-land/), versión 5.1.1 | Máscara de tierra y agua costera recortada a los tres condados; dominio público. |
+| `regional_counties` | [U.S. Census TIGERweb, State_County, capa 1](https://tigerweb.geo.census.gov/tigerweb/) | `name`, `geoid`; Broward (12011), Miami-Dade (12086), Monroe (12087). |
+| `regional_roads` | [Geofabrik Florida](https://download.geofabrik.de/north-america/us/florida.html), extracto del 2026-11-24, derivado de [OpenStreetMap](https://www.openstreetmap.org/copyright) | `name`, `kind` (autopista/principal/avenida/colectora/rampa), `clase` (etiqueta OSM `highway`), `ref`, `bridge`, `tunnel`; solo vías principales. Distribución bajo ODbL y atribución «© OpenStreetMap contributors». |
+| `regional_places` | Geofabrik Florida / OpenStreetMap | `name`, `kind` (city/town/village/suburb). |
+| `regional_waterways`, `regional_water` | Geofabrik Florida / OpenStreetMap | `name`, `kind`; ríos/canales y masas de agua/reservorios mapeados. ODbL. |
+
+Para regenerar, instalar `osmium-tool`, `tippecanoe` y `data/requirements.txt`, además de `pyshp`. El PBF regional (unos 662 MB) se guarda en `data/.cache/sur-florida/` y no se incluye en Git. La salida actual es de 2.595.457 bytes; su manifiesto está en `public/data/regional.manifest.json`. La copia publicada está en R2 bajo `regional/v1/` y no altera las carpetas versionadas existentes.
+
 ## Calles: tabla `CLASS` → `clase`
 
 La tabla sigue la definición oficial de Miami-Dade County para `CLASS`:

@@ -1,0 +1,27 @@
+{
+  "file": "regional.pmtiles",
+  "bytes": 2595427,
+  "minzoom": 5,
+  "maxzoom": 10,
+  "bounds": [
+    -83.10891400034167,
+    24.396308000324215,
+    -80.01527599997085,
+    26.355546999761856
+  ],
+  "layers": {
+    "regional_land": 1,
+    "regional_ocean": 1,
+    "regional_counties": 3,
+    "regional_roads": 61331,
+    "regional_places": 75,
+    "regional_waterways": 4538,
+    "regional_water": 13953
+  },
+  "sources": {
+    "roads_water_places": "Geofabrik Florida extract 2026-11-24 (OpenStreetMap, ODbL)",
+    "land": "Natural Earth 1:10m Physical, version 5.1.1 (public domain)",
+    "county_boundaries": "U.S. Census TIGERweb State_County layer 1"
+  },
+  "attribution": "\u00a9 OpenStreetMap contributors \u00b7 Natural Earth \u00b7 U.S. Census TIGERweb"
+}
