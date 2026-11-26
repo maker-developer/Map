@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-11-26T19:42:33+00:00",
+  "coverage": {
+    "counties": [
+      "Miami-Dade County",
+      "Broward County",
+      "Monroe County"
+    ],
+    "bounds": [
+      -83.10891400034167,
+      24.396308000324215,
+      -80.01527599997085,
+      26.355546999761856
+    ]
+  },
+  "sources": {
+    "overture": {
+      "release": "2026-11-18.0",
+      "url": "https://docs.overturemaps.org/guides/places/"
+    },
+    "miamidade": {
+      "url": "https://gisweb.miamidade.gov/businesstracker/",
+      "update_cycle": "weekly per publisher"
+    },
+    "openstreetmap": {
+      "url": "https://download.geofabrik.de/north-america/us/florida-latest.osm.pbf",
+      "attribution": "© OpenStreetMap contributors",
+      "license": "ODbL-1.0",
+      "snapshot": "2026-11-24T21:21:23Z"
+    },
+    "images": {
+      "source": "Wikimedia Commons references explicitly attached to OSM features",
+      "policy": "Only Public Domain, CC0, CC BY, CC BY-SA; preserve creator, credit, page and license links"
+    }
+  },
+  "databases": {
+    "overture": {
+      "file": "overture.sqlite",
+      "rows": 368582,
+      "bytes": 643977216,
+      "license": "Per-record source licenses preserved in details_json.sources",
+      "compressed_file": "overture.sqlite.gz",
+      "compressed_bytes": 127000129,
+      "object_key": "places/v1/overture.sqlite.gz",
+      "compression": "gzip; decompress before opening as SQLite",
+      "fields_populated": {
+        "phone": 323122,
+        "email": 119183,
+        "website": 269205,
+        "opening_hours": 0,
+        "description": 0,
+        "payment_json": 0,
+        "services_json": 0,
+        "photos_json": 0
+      }
+    },
+    "miamidade": {
+      "file": "not_in_public_bundle; local cache at data/.cache/places/miamidade-local.sqlite",
+      "rows": 163005,
+      "excluded_home_businesses": 12913,
+      "source_active_records": 175918,
+      "bytes": 240431104,
+      "license": "Unverified; not published pending confirmation of redistribution terms",
+      "availability": "local_only_pending_redistribution_terms",
+      "fields_populated": {
+        "phone": 133360,
+        "email": 67436,
+        "website": 0,
+        "opening_hours": 0,
+        "description": 0,
+        "payment_json": 0,
+        "services_json": 0,
+        "photos_json": 0
+      }
+    },
+    "openstreetmap": {
+      "file": "openstreetmap.sqlite",
+      "rows": 32880,
+      "bytes": 33910784,
+      "photos_with_verified_reusable_license": 18,
+      "commons_candidates": 54,
+      "pbf_url": "https://download.geofabrik.de/north-america/us/florida-latest.osm.pbf",
+      "license": "ODbL-1.0; visible attribution required",
+      "compressed_file": "openstreetmap.sqlite.gz",
+      "compressed_bytes": 9475328,
+      "pbf_snapshot": "2026-11-24T21:21:23Z",
+      "object_key": "places/v1/openstreetmap.sqlite.gz",
+      "compression": "gzip; decompress before opening as SQLite",
+      "fields_populated": {
+        "phone": 10311,
+        "email": 1063,
+        "website": 11920,
+        "opening_hours": 7812,
+        "description": 533,
+        "payment_json": 1138,
+        "services_json": 4650,
+        "photos_json": 18
+      }
+    }
+  },
+  "notes": [
+    "Each provider is kept in its own SQLite file to preserve provenance and license boundaries.",
+    "Phone, website, hours, descriptions, payment/services and images remain empty when the source does not provide them.",
+    "Home-business records from the county layer are excluded from the public map index to avoid publishing residential coordinates.",
+    "The county Business Tracker and Overture do not provide per-place photos or opening hours in their current schemas; OSM tags and Commons references may fill some gaps.",
+    "Miami-Dade Business Tracker records are generated only into the local ignored cache because its ArcGIS service does not state redistribution terms; no county business records are included in public uploads.",
+    "Public downloadable SQLite files are gzip-compressed to reduce transfer size; decompress before opening with SQLite."
+  ],
+  "public_prefix": "places/v1/",
+  "manifest_object_key": "places/v1/manifest.json"
+}
