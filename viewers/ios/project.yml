@@ -1,0 +1,54 @@
+name: Laboratorio
+options:
+  bundleIdPrefix: com.maker.map
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: es
+packages:
+  # MapLibre Native para iOS. La 6.x trae PMTiles (local y remoto); la 7.x cambió la API.
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    from: 6.31.0
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Laboratorio:
+    type: application
+    platform: iOS
+    sources:
+      - path: Laboratorio
+      # Los mismos PMTiles que usa el visor web (base, edificios, transporte), dentro del app.
+      - path: ../../public/data
+        type: folder
+        buildPhase: resources
+      # Letras DM Sans en el formato de MapLibre (PBF), para que el mapa funcione sin internet.
+      - path: ../../styles/glifos
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: MapLibre
+    info:
+      path: Laboratorio/Info.plist
+      properties:
+        CFBundleDisplayName: Map Lab
+        CFBundleDevelopmentRegion: es
+        UILaunchScreen:
+          UIColorName: AccentColor
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSLocationWhenInUseUsageDescription: "Map Lab usa tu ubicación para mostrarte dónde estás en el mapa."
+        # Para probar teselas servidas desde la Mac en la misma Wi-Fi (npm run dev).
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.maker.map.laboratorio
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor

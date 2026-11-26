@@ -4,3 +4,9 @@ viewers/web/dist/
 data/gtfs/
 data/.cache/
 .DS_Store
+
+# iOS (XcodeGen genera el proyecto y el Info.plist)
+viewers/ios/*.xcodeproj/
+viewers/ios/Laboratorio/Info.plist
+xcuserdata/
+DerivedData/
