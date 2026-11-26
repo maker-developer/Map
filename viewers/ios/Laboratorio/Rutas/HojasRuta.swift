@@ -37,7 +37,6 @@ struct HojaLugar: View {
                         if !ficha.servicios.isEmpty { comodidades(ficha.servicios) }
                         if let horario = ficha.horario { semana(horario, cerrado: ficha.cerrado) }
                         detalles(lugar, ficha)
-                        fuente(ficha)
                     }
 
                     if let error = navegador.error {
@@ -405,7 +404,7 @@ struct HojaLugar: View {
         if !direccion.isEmpty {
             filas.append(AnyView(fila("Dirección", direccion, copiable: true)))
         }
-        filas.append(AnyView(fila("Coordenadas", Self.coordenadas(lugar), copiable: true)))
+        // Las coordenadas de un negocio no hacen falta a la vista: quedan en «···» › Copiar coordenadas.
 
         return VStack(alignment: .leading, spacing: 10) {
             seccion("Detalles")
@@ -456,23 +455,6 @@ struct HojaLugar: View {
         .contextMenu {
             Button("Copiar") { copiar(valor.replacingOccurrences(of: "\n", with: ", ")) }
         }
-    }
-
-    private func fuente(_ ficha: FichaLugar) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            if let atribucion = ficha.atribucion {
-                Text("Datos: \(atribucion)")
-            }
-            ForEach(ficha.atribucionesComplementarias, id: \.self) { atribucion in
-                Text("Datos complementarios: \(atribucion)")
-            }
-            if !ficha.fotos.isEmpty {
-                Text("Fotos: Wikimedia Commons, con la licencia de cada autor.")
-            }
-        }
-        .font(.caption)
-        .foregroundStyle(.tertiary)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: Piezas
