@@ -59,7 +59,7 @@
     },
     "base": {
       "file": "base.pmtiles",
-      "bytes": 19519565
+      "bytes": 19055260
     },
     "transit": {
       "file": "transit.pmtiles",
@@ -75,8 +75,8 @@
     },
     "profundidad": {
       "file": "profundidad.geojson",
-      "count": 1767,
-      "bytes": 1346581
+      "count": 1020,
+      "bytes": 1014919
     },
     "agua-nombres": {
       "file": "agua-nombres.geojson",

@@ -232,7 +232,8 @@ def bathymetry(refresh):
     import numpy as np
     import contourpy
     from netCDF4 import Dataset
-    from shapely.geometry import Polygon, mapping
+    from shapely.geometry import Polygon, MultiPolygon, mapping
+    from scipy.ndimage import gaussian_filter
 
     path = DATOS / "profundidad.geojson"
     if not refresh and path.exists():
@@ -248,16 +249,23 @@ def bathymetry(refresh):
         lon = np.asarray(dataset.variables["lon"][lon0:lon1], dtype="float64")
         elevation = np.asarray(dataset.variables["z"][lat0:lat1, lon0:lon1], dtype="float32")
     elevation[elevation <= -99990] = np.nan
-    generator = contourpy.contour_generator(x=lon, y=lat, z=elevation, fill_type="OuterOffset")
+    wet = np.isfinite(elevation) & (elevation < 0)
+    weights = gaussian_filter(wet.astype("float32"), sigma=1.25, mode="nearest")
+    smooth = gaussian_filter(np.where(wet, elevation, 0).astype("float32"), sigma=1.25, mode="nearest")
+    smooth = np.divide(smooth, weights, out=np.full_like(smooth, np.nan), where=weights >= 0.2)
+    smooth[~wet] = np.nan
+    generator = contourpy.contour_generator(x=lon, y=lat, z=smooth, fill_type="OuterOffset")
     bands = [("0-1", -1, 0), ("1-2", -2, -1), ("2-5", -5, -2),
-             ("5-10", -10, -5), ("10+", float(np.nanmin(elevation)), -10)]
+             ("5-10", -10, -5), ("10+", float(np.nanmin(smooth)), -10)]
     rows = []
     for label, low, high in bands:
         if low >= high:
             continue
         for points, offsets in zip(*generator.filled(low, high)):
             rings = [Polygon(points[a:b]).buffer(0) for a, b in zip(offsets[:-1], offsets[1:])]
-            rings = [ring for ring in rings if not ring.is_empty and ring.area > 0]
+            rings = [part for ring in rings if not ring.is_empty
+                     for part in (ring.geoms if isinstance(ring, MultiPolygon) else [ring])
+                     if part.area > 0]
             # Anillo de mayor nivel de inclusión = exterior; anillos hijos impares = huecos.
             parents = []
             for ring in rings:
@@ -277,13 +285,61 @@ def bathymetry(refresh):
                     continue
                 holes = [list(rings[j].exterior.coords) for j, parent in enumerate(parents)
                          if parent == i and depths[j] == depths[i] + 1]
-                polygon = Polygon(ring.exterior.coords, holes).simplify(0.0018, preserve_topology=True)
+                polygon = Polygon(ring.exterior.coords, holes).simplify(0.0004, preserve_topology=True)
                 if polygon.is_empty or polygon.area < 0.00000015:
                     continue
                 rows.append(feature(mapping(polygon), banda=label))
     write("profundidad.geojson", collection(rows))
     print(f"profundidad: {len(rows):,} polígonos NOAA", flush=True)
     return rows
+
+
+def clip_depth_to_water(depth_rows, water_rows):
+    """Recorta las bandas NOAA al agua del condado y conserva la costa como límite."""
+    from shapely.geometry import shape, mapping, Polygon, MultiPolygon, GeometryCollection
+    from shapely.strtree import STRtree
+    from shapely.ops import unary_union
+    from shapely import make_valid
+
+    water_geometries = [make_valid(shape(row["geometry"])) for row in water_rows if row.get("geometry")]
+    if not water_geometries:
+        raise RuntimeError("La capa agua no contiene polígonos para recortar profundidad")
+    tree = STRtree(water_geometries)
+    result, before_area, after_area = [], 0.0, 0.0
+    for row in depth_rows:
+        source = make_valid(shape(row["geometry"]))
+        before_area += source.area
+        nearby = tree.query(source, predicate="intersects")
+        if len(nearby) == 0:
+            continue
+        water_piece = make_valid(unary_union([water_geometries[int(index)] for index in nearby]))
+        clipped = source.intersection(water_piece)
+        if clipped.is_empty:
+            continue
+        # Simplificar para quitar vértices residuales y volver a recortar para que
+        # el borde resultante nunca se extienda sobre tierra ni muelles.
+        clipped = make_valid(clipped.simplify(0.00015, preserve_topology=True))
+        clipped = make_valid(clipped.intersection(water_piece)).buffer(0)
+        if isinstance(clipped, Polygon):
+            polygons = [clipped]
+        elif isinstance(clipped, MultiPolygon):
+            polygons = list(clipped.geoms)
+        elif isinstance(clipped, GeometryCollection):
+            polygons = [part for part in clipped.geoms if isinstance(part, Polygon)]
+        else:
+            polygons = []
+        polygons = [polygon for polygon in polygons if polygon.area >= 0.00000001]
+        if not polygons:
+            continue
+        geometry = polygons[0] if len(polygons) == 1 else MultiPolygon(polygons)
+        after_area += geometry.area
+        result.append(feature(mapping(geometry), banda=row["properties"]["banda"]))
+    if not result:
+        raise RuntimeError("El recorte con la capa agua eliminó todas las bandas de profundidad")
+    write("profundidad.geojson", collection(result))
+    pct = 100 * (1 - after_area / before_area) if before_area else 0
+    print(f"profundidad recortada: {len(result):,} polígonos; área removida {pct:.1f}%", flush=True)
+    return result
 
 
 def named_water_layers(refresh):
@@ -416,10 +472,13 @@ def main():
             ("playas", service("Beachpoly_gdb"), "NAME", named, {"simplify": 0.000004}),
         ]
         layers = {}
+        water_rows = None
         for name, layer, fields, transform, options in specs:
             rows = build(name, layer, fields, transform, args.actualizar, **options)
+            if name == "agua":
+                water_rows = rows
             layers[name] = layer_meta(f"{name}.geojson", rows)
-        depth_rows = bathymetry(args.actualizar)
+        depth_rows = clip_depth_to_water(bathymetry(args.actualizar), water_rows)
         layers["profundidad"] = layer_meta("profundidad.geojson", depth_rows)
         water_labels, water_axes = named_water_layers(args.actualizar)
         layers["agua-nombres"] = layer_meta("agua-nombres.geojson", water_labels)
@@ -457,7 +516,8 @@ def main():
         write(f"{name}.geojson", collection(rows))
         layers[name] = layer_meta(f"{name}.geojson", rows)
     if args.todo_condado:
-        depth_rows = bathymetry(args.actualizar)
+        water_rows = json.loads((DATOS / "agua.geojson").read_text())["features"]
+        depth_rows = clip_depth_to_water(bathymetry(args.actualizar), water_rows)
         layers["profundidad"] = layer_meta("profundidad.geojson", depth_rows)
         water_labels, water_axes = named_water_layers(args.actualizar)
         layers["agua-nombres"] = layer_meta("agua-nombres.geojson", water_labels)
