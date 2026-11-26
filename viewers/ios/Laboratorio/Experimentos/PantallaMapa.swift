@@ -184,7 +184,7 @@ private struct PanelMedidas: View {
 }
 
 /// Lo que se tocó en el mapa: edificio (dirección y altura) o parada (nombre y rutas).
-private struct FichaTocado: View {
+struct FichaTocado: View {
     let elemento: ElementoTocado
     let cerrar: () -> Void
 

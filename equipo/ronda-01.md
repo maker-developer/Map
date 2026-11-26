@@ -40,11 +40,12 @@
 | Claude | El mismo estilo en el visor web, paletas `ronda1` en `styles/base-*.js`, escudos en canvas, edificios encima de calles y transporte, la vista en la dirección (`#zoom/lat/lon/rumbo/inclinación`) | `viewers/web/src/`, `styles/` | Validado con el validador oficial de MapLibre (42 capas, sin errores) y probado en el navegador |
 | Claude | Arreglo: el visor web fallaba al cargar las rutas («features is not iterable»); el transporte quedaba encendido y el filtro vacío | `viewers/web/src/main.js` | Ya carga las 127 rutas |
 | Claude | DM Sans Italic (instancia estática 9 pt, 400) para los nombres del agua | `styles/fonts/`, `styles/glifos/DMSans-Italic/` | OFL, como las demás DM Sans |
+| Claude | **El app pasa a ser un mapa normal** (pedido del dueño): `Principal/MapaPrincipal.swift` (mapa a pantalla completa, apariencia automática, capas, 2D / 3D, ubicación) y `Principal/HojaBusqueda.swift` (hoja inferior con búsqueda de zonas, ficha de lo tocado y botón del laboratorio). Los experimentos siguen en el modo laboratorio. Nombre en el iPhone: **Map** | `viewers/ios/Laboratorio/Principal/` | Sin compilar |
 | Claude | **Colores nuevos** (pedido del dueño, inspirados en Apple Maps sin copiarlos): tierra blanco cálido, agua celeste por profundidad, parques verde fresco, calles grises con borde claro, torres grises con luz neutra, **casas en seis pasteles** (cada casa de un color, siempre el mismo), nombres de calles en mayúsculas espaciadas; modo oscuro grafito con agua azul noche | `styles/base-*.js`, `EstiloMapa.swift`, `EstiloRonda1.swift`, `style.js` | En Map Lab, «Antes» conserva los colores anteriores para comparar |
 
 ## Probar (el dueño, en el iPhone)
 
-En Map Lab, experimento **Ronda 1**, con el interruptor Antes / Después:
+El app abre ya en el **mapa normal** con el estilo de la ronda 1. Para comparar, el matraz junto a la búsqueda abre el **modo laboratorio** → experimento **Ronda 1**, con el interruptor Antes / Después:
 
 1. **Condado entero:** ¿se distinguen de un vistazo las autopistas (I-95, 836, Turnpike) de las avenidas y las calles?
 2. **Brickell inclinado:** ¿se leen los puentes sobre el río y las rampas de la I-95?

@@ -96,6 +96,8 @@ enum OrigenElegido: String, CaseIterable, Identifiable {
 /// Inicio: la lista de experimentos, como Ajustes.
 struct ListaExperimentos: View {
     @AppStorage("origenMapas") private var origen = OrigenElegido.app.rawValue
+    /// Al abrirse desde el mapa principal: vuelve al mapa.
+    var alCerrar: (() -> Void)? = nil
 
     var body: some View {
         NavigationStack {
@@ -130,7 +132,17 @@ struct ListaExperimentos: View {
                     Text("Dentro del app funciona sin internet. En la nube baja solo la parte de cada zona. Desde la Mac sirve para probar teselas nuevas sin compilar.")
                 }
             }
-            .navigationTitle("Map Lab")
+            .navigationTitle("Laboratorio")
+            .toolbar {
+                if let alCerrar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(action: alCerrar) {
+                            Icono(.cerrar, tamano: 18)
+                        }
+                        .accessibilityLabel("Volver al mapa")
+                    }
+                }
+            }
             .navigationDestination(for: Experimento.self) { experimento in
                 PantallaMapa(experimento: experimento)
             }

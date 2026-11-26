@@ -3,13 +3,14 @@ import MapLibre
 
 /// Zonas para recorrer (las mismas del visor web, de `public/data/manifest.json`).
 enum Zona: String, CaseIterable, Identifiable {
-    case condado, brickell, miamiBeach, miamiLakes, bahia
+    case condado, miami, brickell, miamiBeach, miamiLakes, bahia
 
     var id: String { rawValue }
 
     var nombre: String {
         switch self {
         case .condado: "Todo el condado"
+        case .miami: "Miami"
         case .brickell: "Downtown y Brickell"
         case .miamiBeach: "Miami Beach"
         case .miamiLakes: "Miami Lakes"
@@ -20,6 +21,7 @@ enum Zona: String, CaseIterable, Identifiable {
     var centro: CLLocationCoordinate2D {
         switch self {
         case .condado: CLLocationCoordinate2D(latitude: 25.56, longitude: -80.47)
+        case .miami: CLLocationCoordinate2D(latitude: 25.778, longitude: -80.205)
         case .brickell: CLLocationCoordinate2D(latitude: 25.770, longitude: -80.196)
         case .miamiBeach: CLLocationCoordinate2D(latitude: 25.783, longitude: -80.137)
         case .miamiLakes: CLLocationCoordinate2D(latitude: 25.914, longitude: -80.320)
@@ -31,6 +33,7 @@ enum Zona: String, CaseIterable, Identifiable {
     var zoom: Double {
         switch self {
         case .condado: 8.6
+        case .miami: 12.2
         case .brickell: 15.45
         case .miamiBeach: 15.25
         case .miamiLakes: 14.85
@@ -41,6 +44,7 @@ enum Zona: String, CaseIterable, Identifiable {
     var rumbo: Double {
         switch self {
         case .condado: 0
+        case .miami: 0
         case .brickell: -20
         case .miamiBeach: -25
         case .miamiLakes: -21
@@ -124,6 +128,10 @@ struct MapaMapLibre: UIViewRepresentable {
     @Binding var tocado: ElementoTocado?
     /// Sube cada vez que el usuario pide centrar en su ubicación.
     var centrarEnMi: Int
+    /// Vista en 3D (inclinada) o 2D (desde arriba). nil = la decide cada zona (modo laboratorio).
+    var vista3D: Bool? = nil
+    /// Sube para volver a volar a la misma zona (p. ej. elegida otra vez en la búsqueda).
+    var repetirVuelo: Int = 0
 
     func makeCoordinator() -> Coordinador { Coordinador(self) }
 
@@ -145,6 +153,12 @@ struct MapaMapLibre: UIViewRepresentable {
         mapa.minimumZoomLevel = 7
         mapa.maximumZoomLevel = 20
         mapa.setCenter(zona.centro, zoomLevel: zona.zoom, direction: zona.rumbo, animated: false)
+        // Mapa normal en 3D: arranca ya inclinado.
+        if vista3D == true, zona != .condado, zona != .bahia {
+            let camara = mapa.camera
+            camara.pitch = inclinacion
+            mapa.camera = camara
+        }
 
         let toque = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinador.tocar(_:)))
         // Que no compita con el doble toque para acercar.
@@ -169,9 +183,14 @@ struct MapaMapLibre: UIViewRepresentable {
             c.aplicarVisibilidad(mapa)
         }
 
-        if zona != c.zona {
+        if zona != c.zona || repetirVuelo != c.repetirVuelo {
             c.zona = zona
+            c.repetirVuelo = repetirVuelo
             c.ir(a: zona, en: mapa)
+        } else if let vista3D, vista3D != c.vista3D {
+            // Botón 2D / 3D: inclina o endereza la vista donde está.
+            c.vista3D = vista3D
+            c.inclinar(mapa, a: vista3D ? inclinacion : 0)
         } else if inclinacion != c.inclinacion {
             // Nueva inclinación elegida en el menú: se aplica ya si el mapa está en 3D.
             c.inclinacion = inclinacion
@@ -192,8 +211,12 @@ struct MapaMapLibre: UIViewRepresentable {
         var zona: Zona
         var inclinacion: Double
         var centrarEnMi: Int
+        var vista3D: Bool?
+        var repetirVuelo: Int
 
         init(_ padre: MapaMapLibre) {
+            self.vista3D = padre.vista3D
+            self.repetirVuelo = padre.repetirVuelo
             self.padre = padre
             self.estilo = padre.estilo
             self.zona = padre.zona
@@ -216,6 +239,8 @@ struct MapaMapLibre: UIViewRepresentable {
             style.layer(withIdentifier: "buildings-footprints")?.isVisible = !estilo.edificios3D
             style.layer(withIdentifier: "transit-routes")?.isVisible = estilo.transporte
             style.layer(withIdentifier: "transit-stops")?.isVisible = estilo.transporte
+            // En el mapa normal la inclinación la decide solo el botón 2D / 3D.
+            guard padre.vista3D == nil else { return }
             if estilo.edificios3D, zona != .condado, mapa.camera.pitch < 1 {
                 inclinar(mapa, a: padre.inclinacion)
             } else if !estilo.edificios3D, mapa.camera.pitch > 0 {
@@ -225,7 +250,7 @@ struct MapaMapLibre: UIViewRepresentable {
 
         /// Vuela a la zona y, con 3D, la inclina como el visor web.
         func ir(a zona: Zona, en mapa: MLNMapView) {
-            let inclinar3D = estilo.edificios3D && zona != .condado && zona != .bahia
+            let inclinar3D = (padre.vista3D ?? estilo.edificios3D) && zona != .condado && zona != .bahia
             mapa.setCenter(zona.centro, zoomLevel: zona.zoom, direction: inclinar3D ? zona.rumbo : 0, animated: true) { [weak self] in
                 guard let self else { return }
                 self.inclinar(mapa, a: inclinar3D ? self.padre.inclinacion : 0)

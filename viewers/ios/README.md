@@ -1,11 +1,16 @@
-# Map Lab (iOS)
+# Map (iOS)
 
-App nativa de pruebas del mapa propio, con SwiftUI, MapLibre Native e íconos Lucide. Sirve para medir en un iPhone real cada mejora del mapa antes de llevarla a otro proyecto (Busdade u otros).
+App nativa de mapas de Miami-Dade con el estilo propio, en SwiftUI, MapLibre Native e íconos Lucide. **Es un mapa normal, como Apple Maps**, y además tiene un **modo laboratorio** (el ícono del matraz junto a la búsqueda) para probar cada mejora antes de pasarla al mapa.
 
+- **Mapa principal:** pantalla completa con el estilo de la ronda 1, apariencia automática (sigue al iPhone) o fija, controles de vidrio arriba a la derecha (capas, 2D / 3D, mi ubicación) y una hoja inferior con la búsqueda. Al tocar un edificio o una parada, su ficha sube en la hoja.
+- **Búsqueda:** por ahora, zonas del condado. Direcciones, calles, barrios y lugares públicos llegan en la ronda 2.
+- **Modo laboratorio:** la lista de experimentos (antes / después, medidas, origen de los mapas).
 - **Mapa:** MapLibre Native para iOS 6.x por Swift Package Manager. Lee los mismos PMTiles que el visor web (`public/data/`) con `pmtiles://file://`, soportado desde MapLibre iOS 6.10.0.
 - **Letras:** DM Sans en formato de glifos de MapLibre (`styles/glifos/`), dentro del app. Funciona sin internet.
 - **Íconos:** Lucide (licencia ISC, `Laboratorio/Resources/LICENSE-lucide.txt`) como SVG en Assets › Lucide.
 - **iOS 18 o posterior.** En iOS 26 los controles usan Liquid Glass; antes, material del sistema.
+
+El proyecto y la carpeta se siguen llamando `Laboratorio` (cambiar el nombre del target no aporta nada); en el iPhone el app se llama **Map**.
 
 ## Compilar (Mac con Xcode)
 
@@ -60,6 +65,7 @@ viewers/ios/
   project.yml                    Proyecto de XcodeGen (MapLibre, datos y letras como recursos)
   Laboratorio/
     App/                         Entrada del app, íconos Lucide, vidrio y textos
+    Principal/                   El mapa normal: MapaPrincipal (mapa y controles) y HojaBusqueda
     Mapa/EstiloMapa.swift        Estilo del mapa en código (paletas de styles/), escrito como JSON
     Mapa/EstiloRonda1.swift      Ronda 1: calles por clase, puentes, túneles, escudos, arena y agua
     Mapa/Escudos.swift           Escudos de autopista dibujados en código (estirables)

@@ -33,7 +33,7 @@ targets:
     info:
       path: Laboratorio/Info.plist
       properties:
-        CFBundleDisplayName: Map Lab
+        CFBundleDisplayName: Map
         CFBundleDevelopmentRegion: es
         UILaunchScreen:
           UIColorName: AccentColor
