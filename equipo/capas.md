@@ -11,6 +11,7 @@ Una capa que el estilo pide y todavía no existe no rompe el mapa: MapLibre simp
 | Mapa base | `base.pmtiles` | `base.pmtiles` |
 | Edificios | `edificios.pmtiles` | `buildings.pmtiles` |
 | Transporte | `transit.pmtiles` | `transit.pmtiles` |
+| Límites de velocidad FDOT | `limites-velocidad.pmtiles` | `limites-velocidad/v1/limites-velocidad.pmtiles` |
 
 Al regenerar, Codex sube a una carpeta nueva de R2 (`v2/`, `v3/`…) y no pisa la anterior, para que el app publicado no se rompa. Claude cambia `MapNubeURL` cuando la nueva esté probada.
 
@@ -37,6 +38,14 @@ Al regenerar, Codex sube a una carpeta nueva de R2 (`v2/`, `v3/`…) y no pisa l
 | --- | --- | --- | --- |
 | `paradas` | punto | `id`, `name`, `routes`, `routeFilter`, `rail` | 13+ |
 | `rutas` | línea | `route`, `name`, `color`, `rail` | 10+ |
+
+### `limites-velocidad.pmtiles`
+
+| Capa | Geometría | Propiedades | Zoom |
+| --- | --- | --- | --- |
+| `limites-velocidad` | línea | `limite_mph` (límite publicado en millas/hora), `condado`, `roadway`, `lado`, `direccion_offset`, `inicio_milla`, `fin_milla`, `fuente` | 7–16 |
+
+Solo contiene tramos de FDOT RCI con velocidad explícita válida. La capa no cubre necesariamente calles residenciales; ausencia de geometría equivale a límite desconocido, no inferido. El manifiesto registra fecha del servicio y cobertura por condado.
 
 ## Pedido para la ronda 1 (Codex)
 
