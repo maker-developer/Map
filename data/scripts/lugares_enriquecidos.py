@@ -39,7 +39,6 @@ COUNTY_URL = (
     "(%27011%27%2C%27086%27%2C%27087%27)&outFields=NAME%2CSTATE%2CCOUNTY%2C"
     "GEOID&outSR=4326&f=geojson"
 )
-BUSINESS_URL = "https://gisweb.miamidade.gov/arcgis/rest/services/BusinessTracker/MapServer/0/query"
 OVERTURE_RELEASE = "2026-11-18.0"
 OVERTURE_GLOB = (
     "s3://overturemaps-us-west-2/release/" + OVERTURE_RELEASE +
@@ -47,12 +46,6 @@ OVERTURE_GLOB = (
 )
 UA = "Map place-data builder/1.0 (data provenance and license preserved)"
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
-MDC_FIELDS = (
-    "OBJECTID,BUSNAME,BUSADDR,BUSADDR2,BUSADDR3,BUSCITY,BUSSTATE,ZIPCODE,"
-    "CLASSCODE,CLASSDESC,CATGRYCODE,CATGRYNAME,OCCDESC,BUSNAICSCD,PHONENO,"
-    "EMAIL,LAT,LON,ACCSTATUS,BUSSDATE,BUSCDATE,BUSFLAG,NEWBUS,RCPTSTATUS,GEOADDR"
-)
-
 SCHEMA = """
 PRAGMA journal_mode=OFF;
 PRAGMA synchronous=OFF;
@@ -371,77 +364,6 @@ def build_overture(bounds: Tuple[float, float, float, float], county_union, capt
             "license": "Per-record source licenses preserved in details_json.sources"}
 
 
-def build_mdc(captured: str) -> dict:
-    # The County service exposes the records publicly but its redistribution
-    # license is not stated on the service metadata. Keep this cache local until
-    # the applicable reuse terms are confirmed; never upload it with public DBs.
-    path = CACHE / "miamidade-local.sqlite"
-    db = create_db(path)
-    count = excluded_home = 0
-    qcount = request_json(BUSINESS_URL, {"where": "ACCSTATUS='Active'", "returnCountOnly": "true", "f": "json"})
-    expected = int(qcount.get("count", 0))
-    offset = 0
-    while offset < expected:
-        payload = request_json(BUSINESS_URL, {
-            "where": "ACCSTATUS='Active'", "outFields": MDC_FIELDS,
-            "returnGeometry": "true", "outSR": "4326", "geometryPrecision": "6",
-            "orderByFields": "OBJECTID ASC", "resultOffset": str(offset),
-            "resultRecordCount": "1000", "f": "geojson",
-        })
-        features = payload.get("features", [])
-        if not features:
-            break
-        for feat in features:
-            p = feat.get("properties", {})
-            name = val(p.get("BUSNAME"))
-            if not name:
-                continue
-            flag = val(p.get("BUSFLAG"))
-            if flag and (flag.upper() == "Y" or "HOME BUSINESS" in flag.upper()):
-                excluded_home += 1
-                continue
-            geom = feat.get("geometry") or {}
-            coords = geom.get("coordinates") or []
-            lon = coords[0] if len(coords) >= 2 else p.get("LON")
-            lat = coords[1] if len(coords) >= 2 else p.get("LAT")
-            address = " ".join(filter(None, [val(p.get("BUSADDR")), val(p.get("BUSADDR2")), val(p.get("BUSADDR3"))]))
-            city = val(p.get("BUSCITY"))
-            postal = val(p.get("ZIPCODE"))
-            category = val(p.get("CATGRYNAME")) or val(p.get("CLASSDESC"))
-            details = {k: p.get(k) for k in MDC_FIELDS.split(",") if k not in {"OBJECTID", "OWNERNAME", "MAILNAME"}}
-            row = {
-                "source_id": str(p.get("OBJECTID")), "entity_key": make_entity_key(name, address, lon, lat),
-                "source": "miami_dade_business_tax", "license": "Unverified; local cache only pending reuse terms",
-                "attribution": "Miami-Dade County Business Tracker",
-                "source_url": "https://gisweb.miamidade.gov/businesstracker/",
-                "source_updated": None, "captured_at": captured,
-                "name": name, "aliases": [], "aliases_json": None, "brand": None,
-                "kind": "business", "category": category,
-                "subcategory": val(p.get("OCCDESC")) or val(p.get("BUSNAICSCD")),
-                "description": None, "lon": lon, "lat": lat, "address": address,
-                "locality": city, "region": val(p.get("BUSSTATE")), "postal_code": postal,
-                "phone": val(p.get("PHONENO")), "phones_json": None,
-                "email": val(p.get("EMAIL")), "website": None, "websites_json": None,
-                "socials_json": None, "opening_hours": None, "payment_json": None,
-                "services_json": None, "operating_status": val(p.get("ACCSTATUS")),
-                "confidence": None, "photos_json": None, "details_json": json_text(details),
-            }
-            insert_place(db, row)
-            count += 1
-        offset += len(features)
-        print(f"Miami-Dade Business Tracker: {offset:,}/{expected:,}", flush=True)
-        if len(features) < 1000:
-            break
-        time.sleep(0.05)
-    db.commit()
-    profile = profile_database(db)
-    db.execute("ANALYZE")
-    db.close()
-    return {"file": "local-cache/miamidade-local.sqlite", "rows": count, "excluded_home_businesses": excluded_home,
-            "source_active_records": expected, "bytes": path.stat().st_size, **profile,
-            "license": "Unverified; not published pending confirmation of redistribution terms"}
-
-
 def osm_extract(bounds: Tuple[float, float, float, float]) -> Path:
     if not PBF.exists():
         final_url = download(PBF_URL, PBF)
@@ -627,7 +549,6 @@ def main():
         "coverage": {"counties": [f["properties"]["NAME"] for f in counties], "bounds": list(bounds)},
         "sources": {
             "overture": {"release": OVERTURE_RELEASE, "url": "https://docs.overturemaps.org/guides/places/"},
-            "miamidade": {"url": "https://gisweb.miamidade.gov/businesstracker/", "update_cycle": "weekly per publisher"},
             "openstreetmap": {"url": final_pbf_url, "attribution": "© OpenStreetMap contributors", "license": "ODbL-1.0"},
             "images": {"source": "Wikimedia Commons references explicitly attached to OSM features", "policy": "Only Public Domain, CC0, CC BY, CC BY-SA; preserve creator, credit, page and license links"},
         },
@@ -635,17 +556,11 @@ def main():
         "notes": [
             "Each provider is kept in its own SQLite file to preserve provenance and license boundaries.",
             "Phone, website, hours, descriptions, payment/services and images remain empty when the source does not provide them.",
-            "Home-business records from the county layer are excluded from the public map index to avoid publishing residential coordinates.",
-            "The county Business Tracker and Overture do not provide per-place photos or opening hours in their current schemas; OSM tags and Commons references may fill some gaps.",
-            "Miami-Dade Business Tracker records are generated only into the local ignored cache because its ArcGIS service does not state redistribution terms; no county business records are included in public uploads.",
+            "The Miami-Dade LocalBusinessTax layer was excluded after its official metadata marked it restricted for internal use and its phone information non-public.",
+            "Overture Places does not provide per-place photos or opening hours in its current schema; OSM tags and Commons references may provide some of those fields.",
         ],
     }
     results["databases"]["overture"] = build_overture(bounds, county_union, captured)
-    results["databases"]["miamidade"] = build_mdc(captured)
-    results["databases"]["miamidade"]["availability"] = "local_only_pending_redistribution_terms"
-    results["databases"]["miamidade"]["file"] = (
-        "not_in_public_bundle; local cache at data/.cache/places/miamidade-local.sqlite"
-    )
     results["databases"]["openstreetmap"] = build_osm(bounds, county_union, captured, final_pbf_url)
     results["sources"]["openstreetmap"]["snapshot"] = results["databases"]["openstreetmap"]["pbf_snapshot"]
     for key in ("overture", "openstreetmap"):

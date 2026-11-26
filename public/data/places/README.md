@@ -10,7 +10,7 @@ Both databases cover Miami-Dade, Broward and Monroe. Download a `.gz` file, deco
 
 Key fields include `name`, `brand`, `kind`, `category`, `description`, coordinates, address, phone, email, website, social links, opening hours, payment/services JSON, operating status, confidence, source/license/attribution and photos JSON. Overture stores per-record source and license information in `details_json.sources`. OSM records require visible attribution to OpenStreetMap and carry ODbL-1.0. Commons photo references include their own author, credit and license metadata; image files are not mirrored.
 
-The Miami-Dade Business Tracker has 163,005 active records in a local generated cache, including 12,913 home-business records excluded from its public map index. Its service does not state redistribution terms, so this database is not in the public R2 bundle. See [`data/SOURCES.md`](../../../data/SOURCES.md).
+The Miami-Dade LocalBusinessTax/Business Tracker layer is excluded. Its official metadata classifies access as restricted for internal use and says the telephone information is not for public access. The generator does not fetch or retain those records. See [`data/SOURCES.md`](../../../data/SOURCES.md).
 
 Regenerate with:
 

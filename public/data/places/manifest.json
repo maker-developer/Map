@@ -19,10 +19,6 @@
       "release": "2026-11-18.0",
       "url": "https://docs.overturemaps.org/guides/places/"
     },
-    "miamidade": {
-      "url": "https://gisweb.miamidade.gov/businesstracker/",
-      "update_cycle": "weekly per publisher"
-    },
     "openstreetmap": {
       "url": "https://download.geofabrik.de/north-america/us/florida-latest.osm.pbf",
       "attribution": "© OpenStreetMap contributors",
@@ -48,25 +44,6 @@
         "phone": 323122,
         "email": 119183,
         "website": 269205,
-        "opening_hours": 0,
-        "description": 0,
-        "payment_json": 0,
-        "services_json": 0,
-        "photos_json": 0
-      }
-    },
-    "miamidade": {
-      "file": "not_in_public_bundle; local cache at data/.cache/places/miamidade-local.sqlite",
-      "rows": 163005,
-      "excluded_home_businesses": 12913,
-      "source_active_records": 175918,
-      "bytes": 240431104,
-      "license": "Unverified; not published pending confirmation of redistribution terms",
-      "availability": "local_only_pending_redistribution_terms",
-      "fields_populated": {
-        "phone": 133360,
-        "email": 67436,
-        "website": 0,
         "opening_hours": 0,
         "description": 0,
         "payment_json": 0,
@@ -102,10 +79,9 @@
   "notes": [
     "Each provider is kept in its own SQLite file to preserve provenance and license boundaries.",
     "Phone, website, hours, descriptions, payment/services and images remain empty when the source does not provide them.",
-    "Home-business records from the county layer are excluded from the public map index to avoid publishing residential coordinates.",
     "The county Business Tracker and Overture do not provide per-place photos or opening hours in their current schemas; OSM tags and Commons references may fill some gaps.",
-    "Miami-Dade Business Tracker records are generated only into the local ignored cache because its ArcGIS service does not state redistribution terms; no county business records are included in public uploads.",
-    "Public downloadable SQLite files are gzip-compressed to reduce transfer size; decompress before opening with SQLite."
+    "Public downloadable SQLite files are gzip-compressed to reduce transfer size; decompress before opening with SQLite.",
+    "The Miami-Dade LocalBusinessTax layer is excluded: official metadata restricts it to internal use and states telephone data is not public."
   ],
   "public_prefix": "places/v1/",
   "manifest_object_key": "places/v1/manifest.json"
