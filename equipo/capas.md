@@ -6,7 +6,7 @@ Una capa que el estilo pide y todavía no existe no rompe el mapa: MapLibre simp
 
 ## Archivos
 
-| Archivo | En el repo (`public/data/`) | En la nube (R2 `v1/`) |
+| Archivo | En el repo (`public/data/`) | En la nube (R2 `v2/`, ronda 1) |
 | --- | --- | --- |
 | Mapa base | `base.pmtiles` | `base.pmtiles` |
 | Edificios | `edificios.pmtiles` | `buildings.pmtiles` |
