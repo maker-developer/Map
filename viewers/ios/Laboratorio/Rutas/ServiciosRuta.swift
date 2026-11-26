@@ -25,9 +25,15 @@ enum ServiciosRuta {
         }
     }
 
-    // MARK: - Búsqueda (Photon)
+    // MARK: - Búsqueda (bases de places/v1; Photon de respaldo)
 
     static func buscar(_ texto: String, cerca: CLLocationCoordinate2D?) async throws -> [Lugar] {
+        IndiceLugares.preparar()
+        let locales = await Task.detached(priority: .userInitiated) {
+            IndiceLugares.buscar(texto, cerca: cerca, limite: 12)
+        }.value
+        if !locales.isEmpty { return locales }
+
         var c = URLComponents(string: "https://photon.komoot.io/api/")!
         var items = [
             URLQueryItem(name: "q", value: texto),
