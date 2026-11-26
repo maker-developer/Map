@@ -269,8 +269,10 @@ struct MapaMapLibre: UIViewRepresentable {
         /// Mientras el propio app mueve la cámara, no cuenta como «el usuario movió el mapa».
         var ignorarCambioDeSeguimiento = false
         var moviendoPorApp = false
-        /// Vértices de cada ruta ya pegados a nuestras calles (clave: firma de la ruta → índice → punto).
-        var ajustesRuta: [String: [Int: CLLocationCoordinate2D]] = [:]
+        /// Cada ruta ya pegada a nuestras calles (clave: firma de la ruta).
+        var ajustesRuta: [String: PegadoRuta.Resultado] = [:]
+        /// Rutas que se están pegando a las calles en segundo plano.
+        var pegando: Set<String> = []
 
         init(_ padre: MapaMapLibre) {
             self.vista3D = padre.vista3D
@@ -404,7 +406,6 @@ struct MapaMapLibre: UIViewRepresentable {
 
         func mapViewDidBecomeIdle(_ mapView: MLNMapView) {
             padre.medidas.enReposo()
-            pegarRutasACalles(en: mapView)
         }
     }
 }

@@ -83,10 +83,12 @@ extension MapaMapLibre.Coordinador {
         var hecho: [MLNPolylineFeature] = []
         for (i, ruta) in rutas.enumerated() where ruta.coordenadas.count > 1 {
             // La geometría viene de OpenStreetMap y nuestras calles del condado: se dibuja pegada a ellas.
-            var tramo = coordenadasDibujo(ruta)
+            let dibujo = coordenadasDibujo(ruta, mapa: mapa)
+            var tramo = dibujo.puntos
             // Navegando: lo recorrido va aparte (gris claro) y en azul solo lo que falta.
             if navegador.fase == .navegando, i == elegida {
-                let corte = min(navegador.indiceRecorrido, tramo.count - 2)
+                let original = min(navegador.indiceRecorrido, dibujo.indice.count - 1)
+                let corte = min(original >= 0 ? dibujo.indice[original] : 0, tramo.count - 2)
                 if corte > 0 {
                     let atras = Array(tramo[0...corte])
                     hecho.append(MLNPolylineFeature(coordinates: atras, count: UInt(atras.count)))
