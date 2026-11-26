@@ -180,7 +180,7 @@ struct HojaBusqueda: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Recientes")
-                    .font(.title3.weight(.semibold))
+                    .font(.headline)
                 Spacer()
                 Button("Borrar") { navegador.favoritos.borrarRecientes() }
                     .font(.subheadline)
@@ -211,105 +211,149 @@ struct HojaBusqueda: View {
                     if indice < lista.count - 1 { Divider().padding(.leading, 58) }
                 }
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground),
-                        in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .fondoPieza(radio: 20)
         }
     }
 
-    /// Lugares encontrados (direcciones, sitios): al tocar uno sale su ficha con «Cómo llegar».
+    /// Lugares encontrados: cada uno con su ícono, su dirección y a qué distancia está.
+    /// Mientras busca, filas «fantasma»; si no hay nada, un aviso claro.
     @ViewBuilder
     private var lugares: some View {
-        if !consulta.isEmpty, !navegador.resultados.isEmpty || navegador.buscando {
+        let texto = consulta.trimmingCharacters(in: .whitespaces)
+        if texto.count >= 2 {
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Lugares")
-                        .font(.title3.weight(.semibold))
-                    if navegador.buscando { ProgressView().controlSize(.small) }
-                }
-                .padding(.horizontal, 4)
-                VStack(spacing: 0) {
-                    ForEach(Array(navegador.resultados.enumerated()), id: \.element.id) { indice, lugar in
-                        Button {
-                            escribiendo = false
-                            consulta = ""
-                            navegador.limpiarBusqueda()
-                            navegador.elegir(lugar)
-                        } label: {
-                            HStack(spacing: 12) {
-                                IconoCuadro(icono: .pin, color: .red)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(lugar.nombre)
-                                        .foregroundStyle(.primary)
-                                        .lineLimit(1)
-                                    if !lugar.subtitulo.isEmpty {
-                                        Text(lugar.subtitulo)
+                Text("Lugares")
+                    .font(.headline)
+                    .padding(.horizontal, 4)
+
+                if navegador.resultados.isEmpty {
+                    if navegador.buscando {
+                        VStack(spacing: 0) {
+                            ForEach(0..<3, id: \.self) { _ in
+                                HStack(spacing: 12) {
+                                    Circle().fill(Color.primary.opacity(0.08)).frame(width: 34, height: 34)
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.08)).frame(width: 150, height: 12)
+                                        RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.06)).frame(width: 210, height: 10)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 11)
+                            }
+                        }
+                        .fondoPieza(radio: 20)
+                        .transition(.opacity)
+                    } else {
+                        VStack(spacing: 8) {
+                            Icono(.buscar, tamano: 24).foregroundStyle(.tertiary)
+                            Text("Sin resultados para «\(texto)»")
+                                .font(.subheadline.weight(.semibold))
+                            Text("Prueba con una dirección, un barrio o el nombre del sitio. También puedes mantener pulsado el mapa.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .padding(.horizontal, 12)
+                        .fondoPieza(radio: 20)
+                        .transition(.opacity)
+                    }
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(Array(navegador.resultados.enumerated()), id: \.element.id) { indice, lugar in
+                            Button {
+                                escribiendo = false
+                                consulta = ""
+                                navegador.limpiarBusqueda()
+                                navegador.elegir(lugar)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Icono(.pin, tamano: 16)
+                                        .foregroundStyle(.white)
+                                        .frame(width: 34, height: 34)
+                                        .background(Color.red.gradient, in: Circle())
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(lugar.nombre)
+                                            .foregroundStyle(.primary)
+                                            .lineLimit(1)
+                                        if !lugar.subtitulo.isEmpty {
+                                            Text(lugar.subtitulo)
+                                                .font(.footnote)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(1)
+                                        }
+                                    }
+                                    Spacer(minLength: 8)
+                                    if let aqui = navegador.ubicacion {
+                                        Text(FormatoRuta.distancia(aqui.distance(from: .init(latitude: lugar.coordenada.latitude,
+                                                                                            longitude: lugar.coordenada.longitude))))
                                             .font(.footnote)
                                             .foregroundStyle(.secondary)
-                                            .lineLimit(1)
+                                            .monospacedDigit()
                                     }
                                 }
-                                Spacer(minLength: 0)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 9)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 9)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        if indice < navegador.resultados.count - 1 {
-                            Divider().padding(.leading, 58)
+                            .buttonStyle(.presionable)
+                            if indice < navegador.resultados.count - 1 {
+                                Divider().padding(.leading, 60)
+                            }
                         }
                     }
+                    .fondoPieza(radio: 20)
+                    .transition(.opacity)
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground),
-                            in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
+            .animation(.snappy, value: navegador.resultados.count)
+            .animation(.snappy, value: navegador.buscando)
         }
     }
 
+    /// Zonas como píldoras de vidrio (como las categorías de Apple Maps).
+    @ViewBuilder
     private var explorar: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(consulta.isEmpty ? "Explorar" : "Zonas")
-                .font(.title3.weight(.semibold))
-                .padding(.horizontal, 4)
-
-            VStack(spacing: 0) {
-                ForEach(Array(zonas.enumerated()), id: \.element) { indice, zona in
-                    Button {
-                        escribiendo = false
-                        consulta = ""
-                        elegirZona(zona)
-                    } label: {
-                        HStack(spacing: 12) {
-                            IconoCuadro(icono: icono(zona), color: color(zona))
-                            Text(zona.nombre)
-                                .foregroundStyle(.primary)
-                            Spacer(minLength: 0)
-                            Icono(.flecha, tamano: 13)
-                                .foregroundStyle(.tertiary)
+        if !zonas.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(consulta.isEmpty ? "Explorar" : "Zonas")
+                    .font(.headline)
+                    .padding(.horizontal, 4)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(zonas) { zona in
+                            Button {
+                                escribiendo = false
+                                consulta = ""
+                                elegirZona(zona)
+                            } label: {
+                                HStack(spacing: 7) {
+                                    Icono(icono(zona), tamano: 15)
+                                        .foregroundStyle(color(zona))
+                                    Text(zona.nombre)
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                }
+                                .padding(.horizontal, 14)
+                                .frame(height: 40)
+                                .vidrio(Capsule(), interactivo: true)
+                            }
+                            .buttonStyle(.presionable)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 11)
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
-                    if indice < zonas.count - 1 {
-                        Divider().padding(.leading, 58)
-                    }
+                    .padding(.horizontal, 2)
                 }
-            }
-            .background(Color(uiColor: .secondarySystemGroupedBackground),
-                        in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-
-            if zonas.isEmpty {
-                Text(navegador.resultados.isEmpty && !navegador.buscando ? "Sin resultados." : "")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
-            } else {
-                Text("Mantén pulsado el mapa para poner un pin e ir a ese punto.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
+                .scrollClipDisabled()
+                if consulta.isEmpty {
+                    Text("Mantén pulsado el mapa para poner un pin e ir a ese punto.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                        .padding(.top, 4)
+                }
             }
         }
     }

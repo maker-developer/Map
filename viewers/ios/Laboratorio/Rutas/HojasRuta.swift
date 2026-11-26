@@ -4,99 +4,106 @@ import UIKit
 
 // MARK: - Ficha del lugar
 
-/// Ficha de un sitio (resultado de búsqueda o pin): nombre, dirección y «Cómo llegar» con su tiempo,
-/// y acciones como en Apple Maps: guardar, compartir, copiar la dirección, abrir en otras apps
-/// y guardarlo como Casa o Trabajo.
+/// Ficha de un sitio, como en Apple Maps: nombre, dirección y distancia; una fila de acciones
+/// («Cómo llegar · 7 min» en azul y círculos de vidrio para guardar, compartir y más) y los detalles.
+/// La hoja se ajusta a lo que mide (sin hueco vacío): avisa de su alto con `altura`.
 struct HojaLugar: View {
     let navegador: Navegador
+    @Binding var altura: CGFloat
     @Environment(\.openURL) private var abrirURL
     @State private var copiado = false
 
     var body: some View {
         if let lugar = navegador.destino {
             let favoritos = navegador.favoritos
-            VStack(alignment: .leading, spacing: 16) {
+            let guardado = favoritos.esGuardado(lugar)
+            VStack(alignment: .leading, spacing: 18) {
+                // Cabecera
                 HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(lugar.nombre)
                             .font(.title2.weight(.bold))
                             .fixedSize(horizontal: false, vertical: true)
-                        if !lugar.subtitulo.isEmpty {
-                            Text(lugar.subtitulo)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                            .contentTransition(.opacity)
+                        HStack(spacing: 6) {
+                            if let aqui = navegador.ubicacion {
+                                let metros = aqui.distance(from: .init(latitude: lugar.coordenada.latitude, longitude: lugar.coordenada.longitude))
+                                Text(FormatoRuta.distancia(metros))
+                                Text("·")
+                            }
+                            Text(lugar.subtitulo.isEmpty ? "Lugar" : lugar.subtitulo)
+                                .lineLimit(1)
                         }
-                        if let aqui = navegador.ubicacion {
-                            let metros = aqui.distance(from: .init(latitude: lugar.coordenada.latitude, longitude: lugar.coordenada.longitude))
-                            Text("A \(FormatoRuta.distancia(metros))")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 0)
                     BotonCerrarHoja { navegador.cerrar() }
                 }
 
-                // Botón principal azul con el tiempo en coche (como «🚗 12 min» de Apple Maps).
-                Button {
-                    navegador.comoLlegar()
-                } label: {
-                    HStack(spacing: 8) {
-                        Icono(navegador.modo.icono, tamano: 18)
-                        if let duracion = navegador.duracionPorModo[navegador.modo] {
-                            Text(FormatoRuta.duracion(duracion))
-                        } else {
-                            Text("Cómo llegar")
-                        }
-                    }
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.roundedRectangle(radius: 14))
-                .tint(.blue)
-                .overlay(alignment: .trailing) {
-                    if navegador.cargando && navegador.duracionPorModo.isEmpty {
-                        ProgressView().tint(.white).padding(.trailing, 16)
-                    }
-                }
-
-                // Acciones: guardar, compartir, copiar, abrir en… y más.
+                // Acciones en una fila: la principal en azul y las demás en círculos de vidrio.
                 HStack(spacing: 10) {
-                    let guardado = favoritos.esGuardado(lugar)
-                    Accion(icono: guardado ? .guardado : .guardar, titulo: guardado ? "Guardado" : "Guardar") {
+                    Button {
+                        navegador.comoLlegar()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Icono(navegador.modo.icono, tamano: 18)
+                            Text("Cómo llegar")
+                            if let duracion = navegador.duracionPorModo[navegador.modo] {
+                                Text("· \(FormatoRuta.duracion(duracion))")
+                                    .contentTransition(.numericText())
+                            } else if navegador.cargando {
+                                ProgressView().tint(.white).controlSize(.small)
+                            }
+                        }
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .background(Color.blue, in: Capsule())
+                    }
+                    .buttonStyle(.presionable)
+
+                    circulo(guardado ? .guardado : .guardar, guardado ? "Quitar de guardados" : "Guardar") {
                         favoritos.alternarGuardado(lugar)
                     }
                     .sensoryFeedback(.success, trigger: guardado)
 
                     ShareLink(item: Self.enlace(lugar), subject: Text(lugar.nombre),
                               message: Text([lugar.nombre, lugar.subtitulo].filter { !$0.isEmpty }.joined(separator: "\n"))) {
-                        AccionEtiqueta(icono: .compartir, titulo: "Compartir")
+                        iconoCirculo(.compartir)
                     }
-                    .buttonStyle(.plain)
-
-                    Accion(icono: .copiar, titulo: copiado ? "Copiado" : "Copiar") {
-                        UIPasteboard.general.string = [lugar.nombre, lugar.subtitulo].filter { !$0.isEmpty }.joined(separator: ", ")
-                        copiado = true
-                        Task { try? await Task.sleep(for: .seconds(1.5)); copiado = false }
-                    }
-                    .sensoryFeedback(.success, trigger: copiado)
+                    .buttonStyle(.presionable)
+                    .accessibilityLabel("Compartir")
 
                     Menu {
-                        Button("Apple Maps") { abrirURL(Self.enlace(lugar)) }
-                        Button("Google Maps") {
+                        Button("Abrir en Apple Maps") { abrirURL(Self.enlace(lugar)) }
+                        Button("Abrir en Google Maps") {
                             abrirURL(URL(string: "https://www.google.com/maps/search/?api=1&query=\(lugar.coordenada.latitude),\(lugar.coordenada.longitude)")!)
                         }
-                        Button("Waze") {
+                        Button("Abrir en Waze") {
                             abrirURL(URL(string: "https://waze.com/ul?ll=\(lugar.coordenada.latitude),\(lugar.coordenada.longitude)&navigate=yes")!)
                         }
                         Divider()
                         Button("Guardar como Casa") { favoritos.ponerCasa(lugar) }
                         Button("Guardar como Trabajo") { favoritos.ponerTrabajo(lugar) }
                     } label: {
-                        AccionEtiqueta(icono: .abrirFuera, titulo: "Más")
+                        iconoCirculo(.abrirFuera)
                     }
+                    .accessibilityLabel("Más")
                 }
+
+                // Detalles: la dirección (con copiar) y las coordenadas.
+                VStack(alignment: .leading, spacing: 0) {
+                    detalle("Dirección", [lugar.nombre, lugar.subtitulo].filter { !$0.isEmpty }.joined(separator: "\n")) {
+                        UIPasteboard.general.string = [lugar.nombre, lugar.subtitulo].filter { !$0.isEmpty }.joined(separator: ", ")
+                        copiado = true
+                        Task { try? await Task.sleep(for: .seconds(1.5)); copiado = false }
+                    }
+                    Divider().padding(.leading, 14)
+                    detalle("Coordenadas", String(format: "%.5f, %.5f", lugar.coordenada.latitude, lugar.coordenada.longitude), accion: nil)
+                }
+                .fondoPieza()
+                .sensoryFeedback(.success, trigger: copiado)
 
                 if let error = navegador.error {
                     Text(error).font(.footnote).foregroundStyle(.secondary)
@@ -104,8 +111,53 @@ struct HojaLugar: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 22)
+            .padding(.bottom, 8)
+            // La hoja mide lo que el contenido (más el asa de arriba).
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { altura = $0 + 20 }
             .frame(maxHeight: .infinity, alignment: .top)
+            .animation(.snappy, value: navegador.duracionPorModo.count)
         }
+    }
+
+    private func circulo(_ icono: Lc, _ etiqueta: String, accion: @escaping () -> Void) -> some View {
+        Button(action: accion) { iconoCirculo(icono) }
+            .buttonStyle(.presionable)
+            .accessibilityLabel(etiqueta)
+    }
+
+    private func iconoCirculo(_ icono: Lc) -> some View {
+        Icono(icono, tamano: 19)
+            .foregroundStyle(Color.blue)
+            .frame(width: 50, height: 50)
+            .vidrio(Circle(), interactivo: true)
+            .contentShape(Circle())
+    }
+
+    private func detalle(_ titulo: String, _ valor: String, accion: (() -> Void)?) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(titulo)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Text(valor)
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
+            Spacer(minLength: 0)
+            if let accion {
+                Button(action: accion) {
+                    Icono(copiado ? .guardado : .copiar, tamano: 17)
+                        .foregroundStyle(Color.blue)
+                        .frame(width: 36, height: 36)
+                        .contentTransition(.opacity)
+                }
+                .buttonStyle(.presionable)
+                .accessibilityLabel(copiado ? "Copiado" : "Copiar dirección")
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
     }
 
     /// Enlace universal del lugar (abre Apple Maps; en otros teléfonos, la web de Apple Maps).
@@ -117,192 +169,200 @@ struct HojaLugar: View {
     }
 }
 
-/// Botón de acción de la ficha (ícono arriba, texto abajo).
-private struct Accion: View {
-    let icono: Lc
-    let titulo: String
-    let accion: () -> Void
-
-    var body: some View {
-        Button(action: accion) { AccionEtiqueta(icono: icono, titulo: titulo) }
-            .buttonStyle(.plain)
-    }
-}
-
-private struct AccionEtiqueta: View {
-    let icono: Lc
-    let titulo: String
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Icono(icono, tamano: 19)
-            Text(titulo)
-                .font(.caption.weight(.medium))
-                .lineLimit(1)
-        }
-        .foregroundStyle(Color.blue)
-        .frame(maxWidth: .infinity, minHeight: 56)
-        .background(Color(uiColor: .secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .contentShape(Rectangle())
-    }
-}
-
 // MARK: - Planificar la ruta
 
-/// Origen y destino, pestañas de modo con su tiempo, las rutas posibles y «Ir».
+/// «Cómo llegar», como Apple Maps: el destino en grande con «Desde Mi ubicación» e ⇅, los modos en una
+/// cápsula de vidrio con un indicador que se desliza, las rutas como filas limpias (la elegida resaltada
+/// con un fondo que se mueve suave) con «Ir», y los pasos que se despliegan.
 struct HojaRuta: View {
     let navegador: Navegador
     @State private var verPasos = false
+    @Namespace private var animacion
 
     var body: some View {
-        VStack(spacing: 14) {
-            HStack(alignment: .center, spacing: 12) {
-                Text("Cómo llegar")
-                    .font(.title2.weight(.bold))
-                Spacer(minLength: 0)
-                BotonCerrarHoja { navegador.cerrar() }
-            }
-
-            campos
+        VStack(spacing: 16) {
+            cabecera
             modos
 
             ScrollView {
-                VStack(spacing: 10) {
+                VStack(spacing: 6) {
                     if navegador.cargando && navegador.rutas.isEmpty {
-                        ProgressView("Buscando rutas…")
-                            .frame(maxWidth: .infinity, minHeight: 90)
+                        ForEach(0..<2, id: \.self) { _ in filaCargando }
                     } else if let error = navegador.error, navegador.rutas.isEmpty {
-                        Text(error)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, minHeight: 90)
+                        VStack(spacing: 8) {
+                            Icono(.ruta, tamano: 26).foregroundStyle(.secondary)
+                            Text(error)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 110)
                     }
+
                     ForEach(Array(navegador.rutas.enumerated()), id: \.element.id) { i, ruta in
-                        TarjetaRuta(ruta: ruta, elegida: i == navegador.elegida, masRapida: i == 0,
-                                    modo: navegador.modo) {
+                        FilaRuta(ruta: ruta, elegida: i == navegador.elegida, masRapida: i == 0 && navegador.rutas.count > 1,
+                                 animacion: animacion) {
                             if i == navegador.elegida { navegador.iniciar() } else { navegador.elegirRuta(i) }
                         }
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
                     }
+
                     if let ruta = navegador.rutaElegida {
-                        DisclosureGroup(isExpanded: $verPasos) {
-                            ListaPasos(pasos: ruta.pasos)
-                        } label: {
-                            Text("\(ruta.pasos.count) pasos")
-                                .font(.subheadline.weight(.semibold))
-                        }
-                        .tint(.primary)
-                        .padding(.horizontal, 4)
-                        .padding(.top, 4)
+                        pasos(ruta)
+                            .padding(.top, 8)
                     }
-                    Text("Rutas de prueba: OSRM · © OpenStreetMap. Se cambiarán por el motor propio.")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 6)
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
         }
         .padding(.horizontal, 20)
-        .padding(.top, 22)
-        .animation(.snappy, value: navegador.elegida)
+        .padding(.top, 20)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: navegador.elegida)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: navegador.rutas.count)
+        .animation(.snappy, value: navegador.modo)
     }
 
-    /// «Desde: Mi ubicación» / «Hasta: …» con el botón ⇅ para invertir.
-    private var campos: some View {
-        HStack(spacing: 10) {
-            VStack(spacing: 0) {
-                fila(icono: .origen, color: .blue, titulo: navegador.nombreOrigen)
-                Divider().padding(.leading, 36)
-                fila(icono: .pin, color: .red, titulo: navegador.destino?.nombre ?? "")
+    /// Destino en grande, «Desde Mi ubicación» y el botón ⇅.
+    private var cabecera: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(navegador.destino?.nombre ?? "Cómo llegar")
+                    .font(.title2.weight(.bold))
+                    .lineLimit(2)
+                    .contentTransition(.opacity)
+                HStack(spacing: 6) {
+                    Icono(.origen, tamano: 13).foregroundStyle(.blue)
+                    Text("Desde \(navegador.nombreOrigen)")
+                        .lineLimit(1)
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground),
-                        in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            Button {
-                navegador.invertir()
-            } label: {
-                Icono(.invertir, tamano: 18)
-                    .foregroundStyle(Color.primary)
-                    .frame(width: 44, height: 44)
-            }
-            .buttonStyle(.plain)
-            .vidrio(Circle(), interactivo: true)
-            .accessibilityLabel("Invertir origen y destino")
-        }
-    }
-
-    private func fila(icono: Lc, color: Color, titulo: String) -> some View {
-        HStack(spacing: 12) {
-            Icono(icono, tamano: 16).foregroundStyle(color).frame(width: 24)
-            Text(titulo).lineLimit(1)
             Spacer(minLength: 0)
+            Button {
+                withAnimation(.snappy) { navegador.invertir() }
+            } label: {
+                Icono(.invertir, tamano: 16)
+                    .foregroundStyle(Color.primary)
+                    .frame(width: 36, height: 36)
+                    .background(Color(uiColor: .tertiarySystemFill), in: Circle())
+            }
+            .buttonStyle(.presionable)
+            .accessibilityLabel("Invertir origen y destino")
+            BotonCerrarHoja { navegador.cerrar() }
         }
-        .padding(.horizontal, 12)
-        .frame(height: 44)
     }
 
-    /// Pestañas Coche / A pie / Bici, cada una con su tiempo.
+    /// Los modos en una cápsula de vidrio; el elegido con un fondo azul que se desliza.
     private var modos: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             ForEach(ModoRuta.allCases) { m in
                 let activo = m == navegador.modo
                 Button {
                     navegador.cambiarModo(m)
                 } label: {
-                    VStack(spacing: 2) {
-                        Icono(m.icono, tamano: 18)
-                        Text(navegador.duracionPorModo[m].map(FormatoRuta.duracion) ?? m.nombre)
-                            .font(.caption.weight(.semibold))
+                    HStack(spacing: 6) {
+                        Icono(m.icono, tamano: 16)
+                        Text(navegador.duracionPorModo[m].map(FormatoRuta.duracion) ?? "–")
+                            .font(.subheadline.weight(.semibold))
                             .monospacedDigit()
                             .lineLimit(1)
+                            .contentTransition(.numericText())
                     }
                     .foregroundStyle(activo ? Color.white : Color.primary)
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(activo ? Color.blue : Color(uiColor: .secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .frame(maxWidth: .infinity, minHeight: 40)
+                    .background {
+                        if activo {
+                            Capsule().fill(Color.blue)
+                                .matchedGeometryEffect(id: "modo", in: animacion)
+                        }
+                    }
+                    .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.presionable)
                 .accessibilityLabel(m.nombre)
                 .accessibilityAddTraits(activo ? .isSelected : [])
             }
         }
+        .padding(4)
+        .vidrio(Capsule())
         .sensoryFeedback(.selection, trigger: navegador.modo)
+    }
+
+    private var filaCargando: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.08)).frame(width: 90, height: 22)
+            RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.06)).frame(width: 200, height: 14)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .fondoPieza()
+        .redacted(reason: .placeholder)
+    }
+
+    /// «8 pasos» que se despliegan con animación.
+    private func pasos(_ ruta: Ruta) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { verPasos.toggle() }
+            } label: {
+                HStack {
+                    Icono(.listaPasos, tamano: 17).foregroundStyle(.secondary)
+                    Text("\(ruta.pasos.count) pasos")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Icono(.flecha, tamano: 14)
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(verPasos ? 90 : 0))
+                }
+                .padding(14)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if verPasos {
+                ListaPasos(pasos: ruta.pasos)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 6)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .fondoPieza()
     }
 }
 
-/// Una ruta: tiempo grande, llegada, distancia, «por…» y «Ir» en la elegida.
-private struct TarjetaRuta: View {
+/// Una ruta como fila limpia: tiempo grande, llegada y distancia, «Más rápida» y «por…»;
+/// la elegida con fondo resaltado (que se desliza entre filas) y el botón verde «Ir».
+private struct FilaRuta: View {
     let ruta: Ruta
     let elegida: Bool
     let masRapida: Bool
-    let modo: ModoRuta
+    let animacion: Namespace.ID
     let accion: () -> Void
 
     var body: some View {
         Button(action: accion) {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(FormatoRuta.duracion(ruta.duracion))
-                        .font(.title2.weight(.bold))
-                        .monospacedDigit()
-                    Text("Llegas a las \(FormatoRuta.hora(ruta.llegada)) · \(FormatoRuta.distancia(ruta.distancia))")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                    HStack(spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(FormatoRuta.duracion(ruta.duracion))
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .monospacedDigit()
                         if masRapida {
                             Text("Más rápida")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.green)
                         }
-                        if !ruta.via.isEmpty {
-                            Text(ruta.via)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
+                    }
+                    Text("Llegas \(FormatoRuta.hora(ruta.llegada)) · \(FormatoRuta.distancia(ruta.distancia))")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    if !ruta.via.isEmpty {
+                        Text(ruta.via)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
                     }
                 }
                 Spacer(minLength: 8)
@@ -310,17 +370,23 @@ private struct TarjetaRuta: View {
                     Text("Ir")
                         .font(.headline)
                         .foregroundStyle(.white)
-                        .frame(width: 64, height: 44)
-                        .background(Color.green, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .frame(width: 70, height: 44)
+                        .background(Color.green, in: Capsule())
+                        .transition(.scale(scale: 0.7).combined(with: .opacity))
                 }
             }
             .padding(14)
-            .background(Color(uiColor: .secondarySystemGroupedBackground),
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(elegida ? Color.blue : Color.clear, lineWidth: 2))
+            .background {
+                if elegida {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.blue.opacity(0.10))
+                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.blue.opacity(0.35), lineWidth: 1))
+                        .matchedGeometryEffect(id: "ruta", in: animacion)
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.presionable)
         .accessibilityHint(elegida ? "Empieza la navegación" : "Elige esta ruta")
     }
 }
@@ -587,8 +653,7 @@ struct HojaNavegacion: View {
         }
         .foregroundStyle(Color.blue)
         .frame(maxWidth: .infinity, minHeight: 64)
-        .background(Color(uiColor: .secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .fondoPieza(radio: 14)
         .contentShape(Rectangle())
     }
 

@@ -131,3 +131,28 @@ enum Texto {
         }.joined(separator: " ")
     }
 }
+
+// MARK: - Fluidez
+
+/// Botón que se hunde un poco al pulsarlo, con resorte (como los controles de Apple Maps).
+struct EstiloPresionable: ButtonStyle {
+    var escala: CGFloat = 0.96
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? escala : 1)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == EstiloPresionable {
+    static var presionable: EstiloPresionable { EstiloPresionable() }
+}
+
+/// Fondo de las piezas dentro de las hojas: translúcido sobre el vidrio (no bloques blancos).
+extension View {
+    func fondoPieza(radio: CGFloat = 16) -> some View {
+        background(Color.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: radio, style: .continuous))
+    }
+}

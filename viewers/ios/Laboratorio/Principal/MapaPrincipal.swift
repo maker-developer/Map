@@ -21,17 +21,19 @@ struct MapaPrincipal: View {
     @State private var listo = false
     /// Búsqueda, ficha del lugar, rutas y navegación (como Apple Maps y Google Maps).
     @State private var navegador = Navegador()
+    /// Alto de la ficha del lugar: la hoja se ajusta a su contenido.
+    @State private var alturaLugar: CGFloat = 300
     /// Brújula de vidrio (gira con el mapa; se esconde mirando al norte).
     @State private var brujula = Brujula()
 
     /// Alturas de la hoja según lo que se está haciendo.
-    private static let alturaLugar: CGFloat = 270
+    private static let alturaRutaMinima: CGFloat = 300
     private static let alturaNavegacion: CGFloat = 100
     private var alturas: Set<PresentationDetent> {
         switch navegador.fase {
         case .libre: [.height(HojaBusqueda.alturaMinima), .height(HojaBusqueda.alturaFicha), .medium, .large]
-        case .lugar: [.height(Self.alturaLugar), .medium]
-        case .ruta: [.height(Self.alturaLugar), .medium, .large]
+        case .lugar: [.height(alturaLugar), .medium]
+        case .ruta: [.height(Self.alturaRutaMinima), .medium, .large]
         // Navegando: la barra, y al subirla las opciones (resumen, pasos, compartir llegada…).
         case .navegando: [.height(Self.alturaNavegacion), .medium]
         }
@@ -141,7 +143,7 @@ struct MapaPrincipal: View {
                         }
                     )
                 case .lugar:
-                    HojaLugar(navegador: navegador)
+                    HojaLugar(navegador: navegador, altura: $alturaLugar)
                 case .ruta:
                     HojaRuta(navegador: navegador)
                 case .navegando:
@@ -149,7 +151,7 @@ struct MapaPrincipal: View {
                 }
             }
             // Cambio suave entre búsqueda, ficha, ruta y navegación.
-            .transition(.opacity.combined(with: .move(edge: .bottom)))
+            .transition(.blurReplace)
             .animation(.spring(response: 0.38, dampingFraction: 0.86), value: navegador.fase)
             .presentationDetents(alturas, selection: $hoja)
             .presentationDragIndicator(.visible)
@@ -163,12 +165,16 @@ struct MapaPrincipal: View {
         .onChange(of: navegador.fase) { _, fase in
             switch fase {
             case .libre: hoja = .height(HojaBusqueda.alturaMinima)
-            case .lugar: hoja = .height(Self.alturaLugar)
+            case .lugar: hoja = .height(alturaLugar)
             case .ruta: hoja = .medium
             case .navegando: hoja = .height(Self.alturaNavegacion)
             }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: navegador.fase)
+        // La ficha cambia de alto (p. ej. al llegar la dirección): la hoja la acompaña.
+        .onChange(of: alturaLugar) { _, nueva in
+            if navegador.fase == .lugar { withAnimation(.snappy) { hoja = .height(nueva) } }
+        }
         .onChange(of: esquema) { aplicarApariencia() }
         .onChange(of: apariencia) { aplicarApariencia() }
         .onChange(of: tocado) { _, nuevo in
