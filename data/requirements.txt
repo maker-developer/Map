@@ -3,3 +3,4 @@ netCDF4>=1.7,<2
 numpy>=2,<3
 shapely>=2,<3
 scipy>=1.10,<2
+pyproj>=3.6,<4

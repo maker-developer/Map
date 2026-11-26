@@ -8,7 +8,8 @@
     "calles": {
       "file": "calles.geojson",
       "count": 116465,
-      "bytes": 26347683
+      "bytes": 26347683,
+      "withVmax": 4256
     },
     "agua": {
       "file": "agua.geojson",
@@ -59,7 +60,7 @@
     },
     "base": {
       "file": "base.pmtiles",
-      "bytes": 19055260
+      "bytes": 19131161
     },
     "transit": {
       "file": "transit.pmtiles",
@@ -87,6 +88,48 @@
       "file": "agua-ejes.geojson",
       "count": 4,
       "bytes": 11170
+    },
+    "limites-velocidad": {
+      "source": "FDOT RCI Feature 311 MAXSPEED; ROADWAY/POST range joined to LOCALNAM and Street Network by name and geometry",
+      "sourceUrl": "https://services1.arcgis.com/O1JpcwDW8sjYuddV/ArcGIS/rest/services/Maximum_Speed_Limit_TDA/FeatureServer/0",
+      "sourceItem": "https://www.arcgis.com/home/item.html?id=4a61f17ab4784202ae10d7d5fb3bf9de",
+      "sourceUpdated": "2026-11-23",
+      "attribution": "Fuente: Florida Department of Transportation (FDOT), RCI Feature 311 MAXSPEED",
+      "terms": "FDOT GIS is provided as is, without warranties; published inventory may not reflect current conditions.",
+      "termsUrl": "https://www.fdot.gov/statistics/gis/default.shtm",
+      "coverageScope": "FDOT designated State Highway System roads and HPMS samples; not all local streets",
+      "file": "base.pmtiles",
+      "vectorLayer": "calles",
+      "property": "vmax",
+      "units": "mph",
+      "count": 1652,
+      "speedRecordsMatched": 643,
+      "streetFeaturesWithVmax": 4256,
+      "streetFeatures": 116465,
+      "matching": {
+        "maxDistanceM": 5,
+        "minStreetCoverage": 0.95,
+        "maxAngleDegrees": 15,
+        "requiresRoadwayAndMileRangeName": true
+      },
+      "byCounty": {
+        "Miami-Dade": 643,
+        "Broward": 0,
+        "Monroe": 0
+      },
+      "byMph": {
+        "20": 15,
+        "25": 40,
+        "30": 1478,
+        "35": 860,
+        "40": 1311,
+        "45": 497,
+        "50": 18,
+        "55": 37
+      },
+      "onlyExplicitValues": true,
+      "url": "https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/v6/base.pmtiles",
+      "sidecarUrl": "https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/limites-velocidad/v1/limites-velocidad.pmtiles"
     }
   },
   "zones": {

@@ -183,11 +183,18 @@ def base_tiles(tippecanoe, base_only=False):
             for row in raw["features"]:
                 row["tippecanoe"] = {"layer": name, "minzoom": zoom}
                 output.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
+    speed_info = None
+    if "base" in sources:
+        from velocidades import enrich_base_ndjson
+        speed_info = enrich_base_ndjson(sources["base"])
     result = {}
     for name, path in output_files.items():
         tile_archive(tippecanoe, path, ["-Z7", "-z16", str(sources[name])])
         result[name] = {"file": path.name, "bytes": path.stat().st_size}
         print(f"{name}: {path.stat().st_size / 1_000_000:.1f} MB", flush=True)
+    if speed_info:
+        result["limites-velocidad"] = speed_info
+        print(f"calles.vmax: {speed_info['streetFeaturesWithVmax']:,} tramos con límite explícito", flush=True)
     return result
 
 
@@ -488,6 +495,8 @@ def main():
         existing_layers = existing.get("layers", {})
         existing_layers.update(layers)
         existing_layers.update(tile_info)
+        if tile_info.get("limites-velocidad") and "calles" in existing_layers:
+            existing_layers["calles"]["withVmax"] = tile_info["limites-velocidad"]["streetFeaturesWithVmax"]
         write_manifest({**existing, "layers": existing_layers, "generated": time.strftime("%Y-%m-%d")})
         return
     bundle = read_bundle(args.gtfs_datos)
@@ -523,7 +532,10 @@ def main():
         layers["agua-nombres"] = layer_meta("agua-nombres.geojson", water_labels)
         layers["agua-ejes"] = layer_meta("agua-ejes.geojson", water_axes)
         layers["edificios"] = county_building_tiles(args.tippecanoe, args.actualizar)
-        layers.update(base_tiles(args.tippecanoe))
+        tile_info = base_tiles(args.tippecanoe)
+        layers.update(tile_info)
+        if tile_info.get("limites-velocidad") and "calles" in layers:
+            layers["calles"]["withVmax"] = tile_info["limites-velocidad"]["streetFeaturesWithVmax"]
     write_manifest({"layers": layers, "zones": ZONES, "generated": time.strftime("%Y-%m-%d")})
 
 
