@@ -5,6 +5,8 @@ import SwiftUI
 /// El ícono del matraz, junto a la búsqueda, abre el modo laboratorio para probar cosas nuevas.
 struct MapaPrincipal: View {
     @Environment(\.colorScheme) private var esquema
+    @Environment(\.horizontalSizeClass) private var claseAncho
+    @Environment(\.verticalSizeClass) private var claseAlto
     /// «auto» sigue al iPhone; «claro» u «oscuro» lo fijan.
     @AppStorage("apariencia") private var apariencia = "auto"
     @AppStorage("vista3D") private var vista3D = true
@@ -25,6 +27,20 @@ struct MapaPrincipal: View {
     @State private var alturaLugar: CGFloat = 300
     /// Brújula de vidrio (gira con el mapa; se esconde mirando al norte).
     @State private var brujula = Brujula()
+    /// Panel lateral (horizontal y iPad): recogido muestra solo la cabecera.
+    @State private var panelRecogido = false
+    /// Navegando con panel: la barra de abajo subida (Finalizar, opciones).
+    @State private var navegacionAbierta = false
+
+    /// En horizontal (iPhone) y en el iPad la hoja de abajo taparía el mapa: todo va en un panel
+    /// flotante a la izquierda, como Apple Maps en el iPad. En vertical en el iPhone, la hoja de siempre.
+    private var modoPanel: Bool { claseAncho == .regular || claseAlto == .compact }
+    private var anchoPanel: CGFloat { claseAlto == .compact ? 360 : 400 }
+    /// Hueco que deja el panel a la cámara (fuera de la búsqueda libre).
+    private var margenPanel: CGFloat {
+        guard modoPanel, navegador.fase != .libre else { return 0 }
+        return anchoPanel + 16
+    }
 
     /// Alturas de la hoja según lo que se está haciendo.
     private static let alturaRutaMinima: CGFloat = 300
@@ -54,7 +70,8 @@ struct MapaPrincipal: View {
                     // Debajo de la columna de controles (capas, 2D / 3D, ubicación).
                     margenBrujula: CGPoint(x: 23, y: 172),
                     navegador: navegador,
-                    brujula: brujula
+                    brujula: brujula,
+                    margenPanel: margenPanel
                 )
                 .ignoresSafeArea()
             }
@@ -71,29 +88,44 @@ struct MapaPrincipal: View {
                 }
             }
             .padding(.trailing, 16)
-            // Navegando, la brújula queda debajo del banner.
-            .padding(.top, navegador.fase == .navegando ? 190 : 8)
+            // Navegando, la brújula queda debajo del banner (con panel, el banner va a la izquierda).
+            .padding(.top, navegador.fase == .navegando && !modoPanel ? 190 : 8)
             .animation(.snappy, value: brujula.visible)
         }
         // Navegando: el banner de la maniobra arriba (como Apple y Google).
-        .overlay(alignment: .top) {
+        .overlay(alignment: modoPanel ? .topLeading : .top) {
             if navegador.fase == .navegando {
                 BannerManiobra(navegador: navegador)
+                    .frame(maxWidth: modoPanel ? anchoPanel + 24 : .infinity)
                     .padding(.top, 4)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        // Navegando: la velocidad actual (como Google Maps)…
+        // Panel lateral (horizontal y iPad): búsqueda, ficha y ruta…
+        .overlay(alignment: .topLeading) {
+            if listo, modoPanel, navegador.fase != .navegando {
+                panel
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
+        }
+        // …y navegando, la barra de llegada abajo a la izquierda.
         .overlay(alignment: .bottomLeading) {
+            if listo, modoPanel, navegador.fase == .navegando {
+                barraNavegacionPanel
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        // Navegando: la velocidad actual (como Google Maps)…
+        .overlay(alignment: modoPanel ? .bottomTrailing : .bottomLeading) {
             if navegador.fase == .navegando, navegador.siguiendo, !navegador.llegaste {
                 BurbujaVelocidad(metrosPorSegundo: navegador.velocidad)
-                    .padding(.leading, 16)
-                    .padding(.bottom, 128)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, modoPanel ? 16 : 128)
                     .transition(.opacity)
             }
         }
         // …y con el mapa movido a mano, «Volver a centrar», como Apple y Google.
-        .overlay(alignment: .bottomLeading) {
+        .overlay(alignment: modoPanel ? .bottomTrailing : .bottomLeading) {
             if navegador.fase == .navegando, !navegador.siguiendo {
                 Button {
                     navegador.recentrar()
@@ -109,8 +141,8 @@ struct MapaPrincipal: View {
                     .vidrio(Capsule(), interactivo: true)
                 }
                 .buttonStyle(.plain)
-                .padding(.leading, 16)
-                .padding(.bottom, 128)
+                .padding(.horizontal, 16)
+                .padding(.bottom, modoPanel ? 16 : 128)
                 .transition(.scale(scale: 0.8).combined(with: .opacity))
             }
         }
@@ -129,27 +161,8 @@ struct MapaPrincipal: View {
             }
         }
         // La hoja de búsqueda siempre está, como en Apple Maps; se recoge pero no se cierra.
-        .sheet(isPresented: .constant(listo)) {
-            Group {
-                switch navegador.fase {
-                case .libre:
-                    HojaBusqueda(
-                        tocado: $tocado,
-                        hoja: $hoja,
-                        navegador: navegador,
-                        elegirZona: { nueva in
-                            if nueva == zona { repetirVuelo += 1 } else { zona = nueva }
-                            hoja = .height(HojaBusqueda.alturaMinima)
-                        }
-                    )
-                case .lugar:
-                    HojaLugar(navegador: navegador, altura: $alturaLugar)
-                case .ruta:
-                    HojaRuta(navegador: navegador)
-                case .navegando:
-                    HojaNavegacion(navegador: navegador, expandida: hoja != .height(Self.alturaNavegacion))
-                }
-            }
+        .sheet(isPresented: .constant(listo && !modoPanel)) {
+            contenidoHoja
             // Cambio suave entre búsqueda, ficha, ruta y navegación.
             .transition(.blurReplace)
             .animation(.spring(response: 0.38, dampingFraction: 0.86), value: navegador.fase)
@@ -163,6 +176,13 @@ struct MapaPrincipal: View {
         .onChange(of: vista3D) { _, nuevo in estilo.edificios3D = nuevo }
         // La hoja se pone a la altura que toca en cada paso (ficha, ruta, navegación).
         .onChange(of: navegador.fase) { _, fase in
+            if modoPanel {
+                // En el panel, cada paso se abre entero (la búsqueda recuerda si estaba recogida).
+                navegacionAbierta = false
+                if fase != .libre { panelRecogido = false }
+                hoja = panelRecogido && fase == .libre ? .height(HojaBusqueda.alturaMinima) : .large
+                return
+            }
             switch fase {
             case .libre: hoja = .height(HojaBusqueda.alturaMinima)
             case .lugar: hoja = .height(alturaLugar)
@@ -173,15 +193,131 @@ struct MapaPrincipal: View {
         .sensoryFeedback(.impact(weight: .light), trigger: navegador.fase)
         // La ficha cambia de alto (p. ej. al llegar la dirección): la hoja la acompaña.
         .onChange(of: alturaLugar) { _, nueva in
-            if navegador.fase == .lugar { withAnimation(.snappy) { hoja = .height(nueva) } }
+            if navegador.fase == .lugar, !modoPanel { withAnimation(.snappy) { hoja = .height(nueva) } }
         }
         .onChange(of: esquema) { aplicarApariencia() }
         .onChange(of: apariencia) { aplicarApariencia() }
+        // Al girar: del panel a la hoja (o al revés) sin perder dónde estabas.
+        .onChange(of: modoPanel) { _, panel in
+            if panel {
+                hoja = panelRecogido && navegador.fase == .libre ? .height(HojaBusqueda.alturaMinima) : .large
+            } else {
+                switch navegador.fase {
+                case .libre: hoja = .height(HojaBusqueda.alturaMinima)
+                case .lugar: hoja = .height(alturaLugar)
+                case .ruta: hoja = .medium
+                case .navegando: hoja = .height(Self.alturaNavegacion)
+                }
+            }
+        }
+        // La búsqueda recoge o abre la hoja por su cuenta (p. ej. al escribir): el panel la sigue.
+        .onChange(of: hoja) { _, nueva in
+            if modoPanel, navegador.fase == .libre {
+                withAnimation(.snappy) { panelRecogido = nueva == .height(HojaBusqueda.alturaMinima) }
+            }
+        }
         .onChange(of: tocado) { _, nuevo in
+            if modoPanel {
+                if nuevo != nil { withAnimation(.snappy) { panelRecogido = false; hoja = .large } }
+                return
+            }
             // Al tocar algo en el mapa, la hoja sube un poco para enseñar su ficha.
             if nuevo != nil, hoja == .height(HojaBusqueda.alturaMinima) { hoja = .height(HojaBusqueda.alturaFicha) }
         }
         .sensoryFeedback(.selection, trigger: vista3D)
+    }
+
+    // MARK: - Contenido de la hoja o del panel
+
+    @ViewBuilder
+    private var contenidoHoja: some View {
+        Group {
+            switch navegador.fase {
+            case .libre:
+                HojaBusqueda(
+                    tocado: $tocado,
+                    hoja: $hoja,
+                    navegador: navegador,
+                    elegirZona: { nueva in
+                        if nueva == zona { repetirVuelo += 1 } else { zona = nueva }
+                        if modoPanel {
+                            withAnimation(.snappy) { panelRecogido = true }
+                        }
+                        hoja = .height(HojaBusqueda.alturaMinima)
+                    }
+                )
+            case .lugar:
+                HojaLugar(navegador: navegador, altura: $alturaLugar)
+            case .ruta:
+                HojaRuta(navegador: navegador)
+            case .navegando:
+                HojaNavegacion(navegador: navegador, expandida: hoja != .height(Self.alturaNavegacion))
+            }
+        }
+    }
+
+    // MARK: - Panel lateral (horizontal y iPad)
+
+    /// Tarjeta de vidrio flotando a la izquierda, a todo el alto (o recogida a la cabecera).
+    /// El asa de arriba la recoge y la abre.
+    private var panel: some View {
+        let forma = RoundedRectangle(cornerRadius: 28, style: .continuous)
+        let altoRecogido: CGFloat = navegador.fase == .libre ? HojaBusqueda.alturaMinima - 8 : 132
+        return VStack(spacing: 0) {
+            asa(abierta: !panelRecogido) {
+                panelRecogido.toggle()
+                if navegador.fase == .libre {
+                    hoja = panelRecogido ? .height(HojaBusqueda.alturaMinima) : .large
+                }
+            }
+            contenidoHoja
+                .frame(maxHeight: panelRecogido ? altoRecogido : .infinity, alignment: .top)
+                .clipped()
+                .transition(.blurReplace)
+        }
+        .frame(width: anchoPanel)
+        .frame(maxHeight: panelRecogido ? nil : .infinity, alignment: .top)
+        .clipShape(forma)
+        .vidrio(forma)
+        .shadow(color: .black.opacity(0.12), radius: 18, y: 6)
+        .padding(.leading, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: navegador.fase)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: panelRecogido)
+    }
+
+    /// Navegando con panel: la barra de llegada abajo a la izquierda; el asa la sube (Finalizar…).
+    private var barraNavegacionPanel: some View {
+        let forma = RoundedRectangle(cornerRadius: 28, style: .continuous)
+        return VStack(spacing: 0) {
+            asa(abierta: navegacionAbierta) { navegacionAbierta.toggle() }
+            HojaNavegacion(navegador: navegador, expandida: navegacionAbierta)
+                .frame(height: navegacionAbierta ? 300 : 84, alignment: .top)
+                .clipped()
+        }
+        .frame(width: anchoPanel)
+        .clipShape(forma)
+        .vidrio(forma)
+        .shadow(color: .black.opacity(0.12), radius: 18, y: 6)
+        .padding(.leading, 12)
+        .padding(.bottom, 12)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: navegacionAbierta)
+    }
+
+    private func asa(abierta: Bool, accion: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) { accion() }
+        } label: {
+            Capsule()
+                .fill(Color.secondary.opacity(0.45))
+                .frame(width: 36, height: 5)
+                .frame(maxWidth: .infinity, minHeight: 20)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(abierta ? "Recoger panel" : "Abrir panel")
+        .sensoryFeedback(.selection, trigger: abierta)
     }
 
     private func preparar() {

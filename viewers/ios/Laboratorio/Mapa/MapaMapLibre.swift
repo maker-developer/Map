@@ -138,6 +138,8 @@ struct MapaMapLibre: UIViewRepresentable {
     var navegador: Navegador? = nil
     /// Brújula de vidrio propia (si la hay, se esconde la de MapLibre).
     var brujula: Brujula? = nil
+    /// Ancho que tapa el panel lateral (horizontal y iPad); la cámara deja ese hueco a la izquierda.
+    var margenPanel: CGFloat = 0
 
     func makeCoordinator() -> Coordinador { Coordinador(self) }
 
@@ -212,6 +214,13 @@ struct MapaMapLibre: UIViewRepresentable {
             if estilo.edificios3D, mapa.camera.pitch > 0 { c.inclinar(mapa, a: inclinacion) }
         }
 
+        // Al girar el teléfono (o en el iPad) el panel lateral cambia: la cámara se recoloca.
+        if margenPanel != c.margenAplicado {
+            c.margenAplicado = margenPanel
+            c.aplicarFase(en: mapa)
+            if navegador?.fase == .ruta || navegador?.fase == .lugar { c.encuadrar(en: mapa) }
+        }
+
         // Rutas, pin, encuadre y cámara de navegación.
         if let navegador {
             if navegador.versionRutas != c.versionRutas || navegador.fase != c.faseVista {
@@ -273,6 +282,7 @@ struct MapaMapLibre: UIViewRepresentable {
         var ajustesRuta: [String: PegadoRuta.Resultado] = [:]
         /// Rutas que se están pegando a las calles en segundo plano.
         var pegando: Set<String> = []
+        var margenAplicado: CGFloat = 0
 
         init(_ padre: MapaMapLibre) {
             self.vista3D = padre.vista3D

@@ -144,7 +144,11 @@ extension MapaMapLibre.Coordinador {
     /// Encuadra la ruta (o el destino) dejando sitio a la hoja de abajo, en plano como Apple y Google.
     func encuadrar(en mapa: MLNMapView) {
         guard let navegador = padre.navegador else { return }
-        let relleno = UIEdgeInsets(top: 110, left: 50, bottom: 430, right: 70)
+        // Con el panel lateral (horizontal y iPad) el hueco va a la izquierda; si no, abajo para la hoja.
+        let panel = padre.margenPanel
+        let relleno = panel > 0
+            ? UIEdgeInsets(top: 70, left: panel + 40, bottom: 50, right: 80)
+            : UIEdgeInsets(top: 110, left: 50, bottom: 430, right: 70)
         if let ruta = navegador.rutaElegida, ruta.coordenadas.count > 1,
            navegador.fase == .ruta || navegador.fase == .navegando {
             // Resumen al navegar: la ruta entera, sin el hueco de la flecha abajo.
@@ -165,15 +169,19 @@ extension MapaMapLibre.Coordinador {
         let navegando = navegador.fase == .navegando
         mapa.showsUserHeadingIndicator = navegando
         if mapa.userTrackingMode != .none { mapa.userTrackingMode = .none }
-        mapa.contentInset = navegando
-            ? UIEdgeInsets(top: mapa.bounds.height * 0.42, left: 0, bottom: 120, right: 0)
-            : .zero
+        mapa.contentInset = navegando ? rellenoNavegacion(mapa) : .zero
         if navegando { seguir(en: mapa, duracion: 0.8) }
+    }
+
+    /// Navegando, la flecha va en el tercio de abajo; con panel lateral, además a la derecha de él.
+    func rellenoNavegacion(_ mapa: MLNMapView) -> UIEdgeInsets {
+        let panel = padre.margenPanel
+        return UIEdgeInsets(top: mapa.bounds.height * 0.42, left: panel, bottom: panel > 0 ? 30 : 120, right: 0)
     }
 
     /// La cámara vuelve a seguirte («Volver a centrar» o al empezar).
     func seguir(en mapa: MLNMapView, duracion: TimeInterval = 0.6) {
-        mapa.contentInset = UIEdgeInsets(top: mapa.bounds.height * 0.42, left: 0, bottom: 120, right: 0)
+        mapa.contentInset = rellenoNavegacion(mapa)
         camaraNavegacion(en: mapa, duracion: duracion)
     }
 
