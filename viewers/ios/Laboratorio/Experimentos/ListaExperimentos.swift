@@ -53,8 +53,38 @@ struct Experimento: Identifiable, Hashable {
     ]
 }
 
+/// Qué origen eligió el usuario en Ajustes (se guarda como texto).
+enum OrigenElegido: String, CaseIterable, Identifiable {
+    case app, nube, mac
+    var id: String { rawValue }
+
+    var nombre: String {
+        switch self {
+        case .app: "Dentro del app"
+        case .nube: "En la nube"
+        case .mac: "Desde la Mac"
+        }
+    }
+
+    /// El origen real, o «dentro del app» si falta la URL de la nube o de la Mac.
+    func origen(urlMac: String) -> OrigenDatos {
+        switch self {
+        case .app:
+            return .app
+        case .nube:
+            return OrigenDatos.urlNube.map(OrigenDatos.nube) ?? .app
+        case .mac:
+            guard let url = URL(string: urlMac.trimmingCharacters(in: .whitespaces)),
+                  url.scheme?.hasPrefix("http") == true else { return .app }
+            return .mac(url)
+        }
+    }
+}
+
 /// Inicio: la lista de experimentos, como Ajustes.
 struct ListaExperimentos: View {
+    @AppStorage("origenMapas") private var origen = OrigenElegido.app.rawValue
+
     var body: some View {
         NavigationStack {
             List {
@@ -74,14 +104,18 @@ struct ListaExperimentos: View {
                     NavigationLink {
                         AjustesLaboratorio()
                     } label: {
-                        Label {
-                            Text("Datos desde la Mac")
-                        } icon: {
-                            IconoCuadro(icono: .capas, color: .gray)
+                        LabeledContent {
+                            Text(OrigenElegido(rawValue: origen)?.nombre ?? "")
+                        } label: {
+                            Label {
+                                Text("Origen de los mapas")
+                            } icon: {
+                                IconoCuadro(icono: .capas, color: .gray)
+                            }
                         }
                     }
                 } footer: {
-                    Text("Para probar teselas nuevas sin volver a compilar: el app las pide a la Mac en la misma Wi-Fi.")
+                    Text("Dentro del app funciona sin internet. En la nube baja solo la parte de cada zona. Desde la Mac sirve para probar teselas nuevas sin compilar.")
                 }
             }
             .navigationTitle("Map Lab")
@@ -124,24 +158,49 @@ struct IconoCuadro: View {
     }
 }
 
-/// Dirección de la Mac para pedirle las teselas (opcional).
+/// De dónde salen los mapas: dentro del app, la nube (R2) o la Mac por Wi-Fi.
 struct AjustesLaboratorio: View {
+    @AppStorage("origenMapas") private var origen = OrigenElegido.app.rawValue
     @AppStorage("urlMac") private var urlMac = ""
 
     var body: some View {
         Form {
             Section {
-                TextField("http://192.168.1.20:4180", text: $urlMac)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-            } header: {
-                Text("Dirección de la Mac")
+                Picker("Origen", selection: $origen) {
+                    ForEach(OrigenElegido.allCases) { Text($0.nombre).tag($0.rawValue) }
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
             } footer: {
-                Text("En la Mac, dentro del repositorio Map: npm run dev. Copia aquí la dirección que dice «Network». Déjalo vacío para usar los mapas del app.")
+                Text(explicacion)
+            }
+
+            if origen == OrigenElegido.mac.rawValue {
+                Section {
+                    TextField("http://192.168.1.20:4180", text: $urlMac)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("Dirección de la Mac")
+                } footer: {
+                    Text("En la Mac, dentro del repositorio Map: npm run dev. Copia aquí la dirección que dice «Network».")
+                }
             }
         }
-        .navigationTitle("Datos desde la Mac")
+        .navigationTitle("Origen de los mapas")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var explicacion: String {
+        switch OrigenElegido(rawValue: origen) ?? .app {
+        case .app:
+            "Los 89 MB de mapas van dentro del app. Funciona sin internet."
+        case .nube:
+            OrigenDatos.urlNube.map { "Cloudflare R2 · \($0.host() ?? $0.absoluteString). Baja solo la parte de cada zona que miras." }
+                ?? "Falta MapNubeURL en Info.plist: se usarán los mapas del app."
+        case .mac:
+            "La Mac sirve los mapas por la misma Wi-Fi. Si la dirección está vacía, se usarán los del app."
+        }
     }
 }

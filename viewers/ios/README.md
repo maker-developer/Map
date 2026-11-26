@@ -36,9 +36,21 @@ Controles a la derecha del mapa (de arriba abajo): zona, capas (3D, «los edific
 
 **«Los edificios tapan»:** los nombres de calles, rutas y paradas se dibujan antes que los edificios, así una torre tapa lo que queda detrás. Apagado, se comporta como el visor web actual (todo flota encima).
 
-## Datos desde la Mac
+## Origen de los mapas
 
-Para probar teselas nuevas sin volver a compilar: en la Mac, desde la raíz del repositorio, `npm run dev`. En el app, *Datos desde la Mac*, escribir la dirección «Network» que muestra Vite (por ejemplo `http://192.168.1.20:4180`). El app pide los PMTiles a la Mac por la Wi-Fi; las letras siguen saliendo del app.
+En el app, *Origen de los mapas* (abajo en la lista):
+
+| Origen | De dónde | Para qué |
+| --- | --- | --- |
+| Dentro del app | `public/data/` copiado al bundle | Sin internet |
+| En la nube | Cloudflare R2, `Info.plist › MapNubeURL` | Baja solo la parte de cada zona (rangos HTTP, respuesta 206) |
+| Desde la Mac | `npm run dev` en la misma Wi-Fi | Probar teselas nuevas sin compilar |
+
+La nube usa `pmtiles://https://…/v1/base.pmtiles`, `buildings.pmtiles` y `transit.pmtiles` (en la nube los edificios se llaman `buildings`, no `edificios`). La dirección `r2.dev` es solo para desarrollo: para producción, conectar un dominio propio al bucket y cambiar `MapNubeURL` en `project.yml`.
+
+El panel de medidas dice qué origen está en uso, para comparar el primer dibujo y la fluidez entre la nube y el app.
+
+Para la Mac: desde la raíz del repositorio, `npm run dev`; en el app, elegir *Desde la Mac* y escribir la dirección «Network» que muestra Vite (por ejemplo `http://192.168.1.20:4180`).
 
 ## Estructura
 

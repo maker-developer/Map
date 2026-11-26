@@ -6,6 +6,7 @@ struct PantallaMapa: View {
     let experimento: Experimento
 
     @AppStorage("urlMac") private var urlMac = ""
+    @AppStorage("origenMapas") private var origenMapas = OrigenElegido.app.rawValue
     @State private var estilo = EstiloMapa()
     @State private var zona: Zona = .condado
     @State private var inclinacion: Double = 54
@@ -31,7 +32,7 @@ struct PantallaMapa: View {
         }
         .overlay(alignment: .topLeading) {
             VStack(alignment: .leading, spacing: 8) {
-                if verMedidas { PanelMedidas(medidas: medidas) }
+                if verMedidas { PanelMedidas(medidas: medidas, origen: estilo.origen.nombre) }
                 if let error = medidas.error { AvisoError(texto: error) }
             }
             .padding(.leading, 16)
@@ -74,9 +75,7 @@ struct PantallaMapa: View {
         estilo.edificios3D = experimento.edificios3D
         estilo.edificiosTapan = experimento.edificiosTapan
         estilo.transporte = experimento.transporte
-        if let url = URL(string: urlMac.trimmingCharacters(in: .whitespaces)), url.scheme?.hasPrefix("http") == true {
-            estilo.origen = .mac(url)
-        }
+        estilo.origen = (OrigenElegido(rawValue: origenMapas) ?? .app).origen(urlMac: urlMac)
         zona = experimento.zona
         verMedidas = experimento.medidas
         medidas.reiniciar()
@@ -141,9 +140,11 @@ struct PantallaMapa: View {
 /// Medidas del mapa en vivo: primer dibujo, cuadros por segundo y memoria.
 private struct PanelMedidas: View {
     let medidas: Medidas
+    let origen: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
+            fila(.capas, "Mapas", origen)
             fila(.reloj, "Primer dibujo", medidas.primerDibujo.map { String(format: "%.1f s", $0) } ?? "midiendo…")
             fila(.medidor, "Cuadros/s", medidas.cuadrosPorSegundo.map { "\($0)" } ?? "en reposo")
             fila(.memoria, "Memoria", medidas.memoriaMB > 0 ? "\(medidas.memoriaMB) MB" : "—")

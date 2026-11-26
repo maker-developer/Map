@@ -67,9 +67,9 @@ struct EstiloMapa {
             "glyphs": origen.urlGlifos,
             "light": ["anchor": "map", "intensity": 0.45, "color": "#fff5e5", "position": [1.15, 210, 35]],
             "sources": [
-                "base": ["type": "vector", "url": origen.urlPMTiles("base.pmtiles")],
-                "buildings": ["type": "vector", "url": origen.urlPMTiles("edificios.pmtiles")],
-                "transit": ["type": "vector", "url": origen.urlPMTiles("transit.pmtiles")],
+                "base": ["type": "vector", "url": origen.urlPMTiles(.base)],
+                "buildings": ["type": "vector", "url": origen.urlPMTiles(.edificios)],
+                "transit": ["type": "vector", "url": origen.urlPMTiles(.transporte)],
                 "towns": ["type": "geojson", "data": Self.pueblos],
             ],
             "layers": capas(),
@@ -185,28 +185,71 @@ struct EstiloMapa {
     ]
 }
 
-/// De dónde salen los PMTiles y las letras.
+/// Los tres archivos de teselas del mapa.
+enum ArchivoMapa {
+    case base, edificios, transporte
+
+    /// Nombre en `public/data/` (dentro del app y en la Mac).
+    var nombreLocal: String {
+        switch self {
+        case .base: "base.pmtiles"
+        case .edificios: "edificios.pmtiles"
+        case .transporte: "transit.pmtiles"
+        }
+    }
+
+    /// Nombre en el bucket de la nube (Cloudflare R2, carpeta v1/).
+    var nombreNube: String {
+        switch self {
+        case .base: "base.pmtiles"
+        case .edificios: "buildings.pmtiles"
+        case .transporte: "transit.pmtiles"
+        }
+    }
+}
+
+/// De dónde salen los PMTiles. Las letras siempre salen del app.
 enum OrigenDatos: Equatable {
-    /// Dentro del app (carpetas `data/` y `glifos/` del bundle). Funciona sin internet.
+    /// Dentro del app (carpeta `data/` del bundle). Funciona sin internet.
     case app
+    /// En la nube: bucket público de Cloudflare R2 con rangos HTTP (cada zona baja solo su parte).
+    /// La URL base sale de Info.plist › MapNubeURL.
+    case nube(URL)
     /// Servidos por la Mac en la misma Wi-Fi con `npm run dev` (p. ej. http://192.168.1.20:4180).
     /// Sirve para probar teselas nuevas sin volver a compilar el app.
     case mac(URL)
 
+    /// Carpeta de la nube (Info.plist › MapNubeURL), p. ej. https://….r2.dev/v1
+    static var urlNube: URL? {
+        (Bundle.main.object(forInfoDictionaryKey: "MapNubeURL") as? String)
+            .flatMap { $0.isEmpty ? nil : URL(string: $0) }
+    }
+
     var clave: String {
         switch self {
         case .app: "app"
+        case .nube(let url): "nube-\(abs(url.absoluteString.hashValue))"
         case .mac(let url): "mac-\(abs(url.absoluteString.hashValue))"
         }
     }
 
-    func urlPMTiles(_ archivo: String) -> String {
+    var nombre: String {
+        switch self {
+        case .app: "Dentro del app"
+        case .nube: "En la nube"
+        case .mac: "Desde la Mac"
+        }
+    }
+
+    func urlPMTiles(_ archivo: ArchivoMapa) -> String {
         switch self {
         case .app:
-            let url = Bundle.main.resourceURL!.appendingPathComponent("data").appendingPathComponent(archivo)
+            let url = Bundle.main.resourceURL!.appendingPathComponent("data").appendingPathComponent(archivo.nombreLocal)
             return "pmtiles://" + url.absoluteString
+        case .nube(let carpeta):
+            return "pmtiles://" + carpeta.appendingPathComponent(archivo.nombreNube).absoluteString
         case .mac(let base):
-            return "pmtiles://" + base.appendingPathComponent("data").appendingPathComponent(archivo).absoluteString
+            return "pmtiles://" + base.appendingPathComponent("data").appendingPathComponent(archivo.nombreLocal).absoluteString
         }
     }
 
