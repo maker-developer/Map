@@ -14,3 +14,4 @@ Una entrada por ronda: qué se entregó, qué probó el dueño y qué decidió.
 - **Codex:** datos de la ronda 1 fusionados en `claude/laboratorio-ios` (`7730bc2`): `clase`, `puente`, `tunel`, `ref`, playas, profundidad (NOAA), nombres del agua. `base.pmtiles` pasa de 16,6 a 19,5 MB.
 - **Claude:** estilo de la ronda 1 (web e iOS), colores nuevos inspirados en Apple Maps a pedido del dueño, y escudos con forma aunque falte `red`.
 - **Dueño:** decide que el app sea **un mapa normal** (como Apple Maps) con un **modo laboratorio** aparte, porque cuando terminen las pruebas seguirá siendo un app de mapas. Claude lo implementa antes de la compilación de la ronda 1. Próximas rondas propuestas: búsqueda (2), rutas a pie (3), rutas en coche (4).
+- **Dueño:** suma a **Cursor** al equipo para avanzar más rápido. Reparto a tres: Claude (app iOS y estilo), Codex (datos, nube, compilar), Cursor (app web y pruebas automáticas). Arranque de Cursor en [`cursor.md`](cursor.md).

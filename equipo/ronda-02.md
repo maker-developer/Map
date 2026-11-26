@@ -1,6 +1,6 @@
 # Ronda 2 · Búsqueda
 
-**Objetivo:** que la barra de búsqueda del mapa encuentre direcciones, calles, barrios, municipios y lugares públicos de Miami-Dade, al instante y sin internet, y vuele al resultado con su ficha.
+**Objetivo:** que la barra de búsqueda del mapa (iOS y web) encuentre direcciones, calles, barrios, municipios y lugares públicos de Miami-Dade, al instante y sin internet, y vuele al resultado con su ficha.
 
 **Estado:** ⏸️ preparada; empieza cuando el dueño cierre la ronda 1.
 
@@ -52,6 +52,7 @@ Nombres con mayúsculas y minúsculas («SW 8th St», no «SW 8TH ST»). Tamaño
 - [ ] **B2. Índice.** Generar `public/data/busqueda.sqlite` con el esquema de arriba desde `data/scripts/`, incluida la normalización de `texto` (variantes de abreviaturas y números).
 - [ ] **B3. Publicar.** Subir a R2 en `v3/` (con los PMTiles de `v2/` copiados, para que `v3/` esté completa) y anotar en «Entregado» tamaños, número de filas por `tipo` y la URL.
 - [ ] **B4. Compilar.** Cuando Claude marque A4, fusionar los datos en `claude/laboratorio-ios`, compilar e instalar en el iPhone.
+- [ ] **B5. Web publicada.** Cuando Cursor lo pida, publicar la app web en Cloudflare Pages (con los PMTiles e índice de R2).
 
 ## Claude (rama `claude/laboratorio-ios`)
 
@@ -59,7 +60,12 @@ Nombres con mayúsculas y minúsculas («SW 8th St», no «SW 8TH ST»). Tamaño
 - [ ] **A2. Hoja de búsqueda.** Resultados en la hoja con íconos Lucide por `tipo`, búsquedas recientes, «sin resultados» útil. Al elegir: vuela al lugar (o encuadra su caja), pone un marcador y abre su ficha (nombre, tipo, dirección, coordenadas y botón «Cómo llegar», desactivado hasta la ronda 3).
 - [ ] **A3. Marcador de lugar.** Pin propio (Lucide `map-pin`) en el mapa para el resultado elegido, en claro y oscuro.
 - [ ] **A4. Laboratorio.** Experimento «Búsqueda» con medidas: milisegundos por consulta y número de resultados, para probar en el iPhone.
-- [ ] **A5. Visor web (opcional).** El mismo buscador con `sql.js` si el tamaño del índice lo permite.
+- [ ] **A5. Algoritmo compartido.** Documentar en `extras/search/README.md` cómo se ordena (exacta > prefijo, `peso`, cercanía), para que Cursor haga lo mismo en la web.
+
+## Cursor (rama `cursor/web`)
+
+- [ ] **W5. Búsqueda en la web.** La misma búsqueda en la hoja de la app web, con `sql.js` sobre `busqueda.sqlite` (cargado desde `public/data/` o R2 `v3/`), con el orden que documente Claude en A5. Si el índice pesa demasiado para el navegador, proponer en «Pedidos» un índice web más pequeño (sin direcciones, o por zonas) y Codex lo genera.
+- [ ] **W6. Pruebas de búsqueda.** `npm run probar-busqueda`: las consultas de la lista «Probar» de abajo, con el primer resultado esperado; sale con error si alguna falla.
 
 ## Pedidos entre los dos
 
@@ -80,3 +86,4 @@ Nombres con mayúsculas y minúsculas («SW 8th St», no «SW 8TH ST»). Tamaño
 4. «bayfront», «jackson memorial», «miami dade college»: ¿encuentra el lugar?
 5. Sin internet (modo avión): ¿sigue buscando igual?
 6. ¿La ficha del resultado se lee bien y el marcador se ve en claro y en oscuro?
+7. En la web (móvil y escritorio): lo mismo que 1–4.
