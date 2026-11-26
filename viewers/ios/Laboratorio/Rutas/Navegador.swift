@@ -347,7 +347,7 @@ final class Navegador {
             let aviso = modo == .coche ? 300.0 : 80.0
             if distancia < aviso, !anunciado.contains(siguiente.id) {
                 anunciado.insert(siguiente.id)
-                decir("En \(FormatoRuta.distancia(distancia)), \(siguiente.instruccion.prefix(1).lowercased() + siguiente.instruccion.dropFirst())")
+                decir("En \(FormatoRuta.distanciaParaVoz(distancia)), \(siguiente.instruccion.prefix(1).lowercased() + siguiente.instruccion.dropFirst())")
             }
         }
 
