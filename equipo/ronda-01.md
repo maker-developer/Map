@@ -15,22 +15,30 @@
 
 ## Claude (rama `claude/laboratorio-ios`)
 
-- [ ] **A1. Jerarquía de calles.** Estilo por `clase` (autopista cálida con borde, avenida blanca con borde fino, local fina, servicio tenue; rampas más finas). Mientras no llegue `clase`, usar `kind` como hoy. Puentes con borde de sombra, túneles punteados. Ancho real en metros a zoom 18+.
-- [ ] **A2. Escudos de autopista.** Escudos propios para `ref` (I, US, SR, Turnpike) como íconos del estilo, en iOS y web.
-- [ ] **A3. Playas y agua.** Arena para `playas`; `profundidad` en degradado turquesa (claro poco profundo → oscuro profundo) en claro y oscuro; nombres de agua en cursiva siguiendo los ríos. Generar glifos de DM Sans Italic.
-- [ ] **A4. Experimento «Ronda 1».** En Map Lab, un experimento con interruptor «Antes / Después» para comparar el estilo actual con el nuevo en Brickell, Miami Beach y la bahía.
-- [ ] **A5. Visor web.** Los mismos cambios en `viewers/web/src/map/style.js` y paletas en `styles/`, para comparar en la Mac.
+- [x] ✅ **A1. Jerarquía de calles.** Estilo por `clase` (autopista cálida con borde, avenida blanca con borde fino, local fina, servicio tenue; rampas más finas). Mientras no llegue `clase`, usar `kind` como hoy. Puentes con borde de sombra, túneles punteados. Ancho real en metros a zoom 18+.
+- [x] ✅ **A2. Escudos de autopista.** Escudos propios para `ref` (I, US, SR, Turnpike) como íconos del estilo, en iOS y web.
+- [x] ✅ **A3. Playas y agua.** Arena para `playas`; `profundidad` en degradado turquesa (claro poco profundo → oscuro profundo) en claro y oscuro; nombres de agua en cursiva siguiendo los ríos. Generar glifos de DM Sans Italic.
+- [x] ✅ **A4. Experimento «Ronda 1».** En Map Lab, un experimento con interruptor «Antes / Después» para comparar el estilo actual con el nuevo en Brickell, Miami Beach y la bahía.
+- [x] ✅ **A5. Visor web.** Los mismos cambios en `viewers/web/src/map/style.js` y paletas en `styles/`, para comparar en la Mac.
 
 ## Pedidos entre los dos
 
 - Claude → Codex: los nombres de propiedades de [`capas.md`](capas.md). Si CLASS no permite distinguir algo (p. ej. rampas), decirlo aquí y lo resolvemos con otra regla.
+- Claude → Codex (nuevo): la tabla CLASS → `clase` ya está comprobada en [`capas.md`](capas.md) (8 clases: añadí `principal` y `peatonal`). Además, en `calles`:
+  1. `name` con mayúsculas y minúsculas («SW 8th St», no «SW 8TH ST»).
+  2. `ref` **y** `red` (`I`, `US`, `SR`, `TP`) para elegir la forma del escudo.
+- Claude → Codex (aviso): en `public/data/` no cambia nada de mi lado; las letras nuevas están en `styles/glifos/DMSans-Italic` (app) y `styles/fonts/DMSans-Italic.ttf` (web).
 - Codex → Claude: *(vacío)*
 
 ## Entregado
 
 | Quién | Qué | Dónde | Notas |
 | --- | --- | --- | --- |
-| | | | |
+| Claude | Estilo ronda 1 en iOS: `EstiloRonda1.swift` (calles por clase con ancho real desde zoom 18, puentes con sombra, túneles punteados, peatonales, nombres con prioridad, escudos, arena, agua por profundidad, nombres del agua en cursiva) y `Escudos.swift` | `claude/laboratorio-ios` · `viewers/ios/Laboratorio/Mapa/` | Funciona ya con `kind`; usa `clase`, `puente`, `tunel`, `ref`, `red`, `playas`, `profundidad`, `agua-nombres`, `agua-ejes` en cuanto existan |
+| Claude | Experimento «Ronda 1 · Calles y agua» con «Antes / Después», zona nueva «Bahía de Biscayne», interruptor en el menú de capas | `viewers/ios/Laboratorio/Experimentos/` | Sin compilar (no hay Xcode en la nube) |
+| Claude | El mismo estilo en el visor web, paletas `ronda1` en `styles/base-*.js`, escudos en canvas, edificios encima de calles y transporte, la vista en la dirección (`#zoom/lat/lon/rumbo/inclinación`) | `viewers/web/src/`, `styles/` | Validado con el validador oficial de MapLibre (42 capas, sin errores) y probado en el navegador |
+| Claude | Arreglo: el visor web fallaba al cargar las rutas («features is not iterable»); el transporte quedaba encendido y el filtro vacío | `viewers/web/src/main.js` | Ya carga las 127 rutas |
+| Claude | DM Sans Italic (instancia estática 9 pt, 400) para los nombres del agua | `styles/fonts/`, `styles/glifos/DMSans-Italic/` | OFL, como las demás DM Sans |
 
 ## Probar (el dueño, en el iPhone)
 

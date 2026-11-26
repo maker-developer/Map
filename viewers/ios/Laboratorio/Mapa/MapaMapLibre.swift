@@ -3,7 +3,7 @@ import MapLibre
 
 /// Zonas para recorrer (las mismas del visor web, de `public/data/manifest.json`).
 enum Zona: String, CaseIterable, Identifiable {
-    case condado, brickell, miamiBeach, miamiLakes
+    case condado, brickell, miamiBeach, miamiLakes, bahia
 
     var id: String { rawValue }
 
@@ -13,6 +13,7 @@ enum Zona: String, CaseIterable, Identifiable {
         case .brickell: "Downtown y Brickell"
         case .miamiBeach: "Miami Beach"
         case .miamiLakes: "Miami Lakes"
+        case .bahia: "Bahía de Biscayne"
         }
     }
 
@@ -22,6 +23,7 @@ enum Zona: String, CaseIterable, Identifiable {
         case .brickell: CLLocationCoordinate2D(latitude: 25.770, longitude: -80.196)
         case .miamiBeach: CLLocationCoordinate2D(latitude: 25.783, longitude: -80.137)
         case .miamiLakes: CLLocationCoordinate2D(latitude: 25.914, longitude: -80.320)
+        case .bahia: CLLocationCoordinate2D(latitude: 25.735, longitude: -80.185)
         }
     }
 
@@ -32,6 +34,7 @@ enum Zona: String, CaseIterable, Identifiable {
         case .brickell: 15.45
         case .miamiBeach: 15.25
         case .miamiLakes: 14.85
+        case .bahia: 11.6
         }
     }
 
@@ -41,6 +44,7 @@ enum Zona: String, CaseIterable, Identifiable {
         case .brickell: -20
         case .miamiBeach: -25
         case .miamiLakes: -21
+        case .bahia: 0
         }
     }
 }
@@ -156,7 +160,8 @@ struct MapaMapLibre: UIViewRepresentable {
         c.padre = self
 
         // Tema, orden de capas u origen de datos: hace falta otro JSON de estilo.
-        if estilo.tema != c.estilo.tema || estilo.edificiosTapan != c.estilo.edificiosTapan || estilo.origen != c.estilo.origen {
+        if estilo.tema != c.estilo.tema || estilo.edificiosTapan != c.estilo.edificiosTapan
+            || estilo.origen != c.estilo.origen || estilo.ronda1 != c.estilo.ronda1 {
             c.cargarEstilo(en: mapa, estilo)
         } else if estilo.edificios3D != c.estilo.edificios3D || estilo.transporte != c.estilo.transporte {
             // Solo visibilidad: se cambia en el estilo ya cargado, sin recargar.
@@ -220,7 +225,7 @@ struct MapaMapLibre: UIViewRepresentable {
 
         /// Vuela a la zona y, con 3D, la inclina como el visor web.
         func ir(a zona: Zona, en mapa: MLNMapView) {
-            let inclinar3D = estilo.edificios3D && zona != .condado
+            let inclinar3D = estilo.edificios3D && zona != .condado && zona != .bahia
             mapa.setCenter(zona.centro, zoomLevel: zona.zoom, direction: inclinar3D ? zona.rumbo : 0, animated: true) { [weak self] in
                 guard let self else { return }
                 self.inclinar(mapa, a: inclinar3D ? self.padre.inclinacion : 0)
@@ -265,6 +270,7 @@ struct MapaMapLibre: UIViewRepresentable {
 
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             padre.medidas.error = nil
+            Escudos.registrar(en: style)
             aplicarVisibilidad(mapView)
         }
 

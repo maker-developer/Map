@@ -17,4 +17,15 @@ export const light = {
   buildingLow: '#d6cbbc',
   buildingMid: '#aab9b1',
   buildingHigh: '#778f88',
+  // Ronda 1 (equipo/ronda-01.md): calles con jerarquía, arena y agua por profundidad.
+  ronda1: {
+    autopista: '#f7d58f', autopistaBorde: '#d9a95c',
+    principal: '#ffffff', principalBorde: '#cdbfa6',
+    avenida: '#ffffff', avenidaBorde: '#d9cfbd',
+    local: '#fffdf8', localBorde: '#e4dccc',
+    servicio: '#f6f1e6', peatonal: '#ead9c4', puenteSombra: '#5b4a33',
+    arena: '#f4e6c3', arenaBorde: '#e6d2a3',
+    profundidad: ['#bfe6e6', '#aedcdf', '#98ced5', '#83bfca', '#6eafbd'],
+    aguaTexto: '#3f7f8c', aguaHalo: '#cbe9ea',
+  },
 };

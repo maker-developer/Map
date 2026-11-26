@@ -15,11 +15,23 @@ struct Experimento: Identifiable, Hashable {
     let edificiosTapan: Bool
     let transporte: Bool
     let medidas: Bool
+    /// Arranca con el estilo de la ronda 1 (si no, el anterior).
+    var ronda1 = true
+    /// Enseña el interruptor «Antes / Después» arriba del mapa.
+    var comparar = false
 
     static func == (a: Self, b: Self) -> Bool { a.id == b.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 
     static let todos: [Experimento] = [
+        Experimento(
+            id: "ronda1", titulo: "Ronda 1 · Calles y agua",
+            detalle: "Jerarquía de calles, escudos, playas y la bahía por profundidad.",
+            mirar: "Usa «Antes / Después» arriba. Mira el condado (autopistas), Brickell (puentes y rampas), Miami Beach (arena) y la bahía (profundidad y nombres del agua). La lista completa está en equipo/ronda-01.md.",
+            icono: .ruta, color: .pink, zona: .condado, tema: .claro,
+            edificios3D: true, edificiosTapan: true, transporte: false, medidas: true,
+            ronda1: true, comparar: true
+        ),
         Experimento(
             id: "base", titulo: "Mapa base", detalle: "Calles, agua, parques y nombres de todo el condado.",
             mirar: "Que cargue rápido, que los nombres se lean y que acercar y alejar vaya fluido.",

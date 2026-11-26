@@ -18,6 +18,9 @@ struct EstiloMapa {
     var edificios3D = true
     var transporte = false
     var origen: OrigenDatos = .app
+    /// Estilo de la ronda 1 (calles con jerarquía, escudos, playas, profundidad y nombres del agua).
+    /// Apagado = el estilo anterior, para comparar «antes / después». Ver `EstiloRonda1.swift`.
+    var ronda1 = true
 
     // MARK: - Paletas (styles/base-light.js · styles/base-dark.js)
 
@@ -28,12 +31,12 @@ struct EstiloMapa {
     }
 
     static let claro = Paleta(
-        background: "#d9e4df", land: "#f0eee4", park: "#cdddc5", parkOutline: "#b8cdb3",
-        water: "#a5cfd5", waterOutline: "#9ec7cb", boundary: "#798f87",
-        street: "#fdfbf4", mainStreet: "#fffaf0", mainStreetCasing: "#c0bbaa",
-        streetLabel: "#606760", cityLabel: "#243d36", halo: "#fbf8ef",
-        building: "#d6c8b7", buildingOutline: "#adab9e",
-        buildingLow: "#e2d1b8", buildingMid: "#adbbb1", buildingHigh: "#698f8b"
+        background: "#e6ece9", land: "#f5f3ed", park: "#d4e3d1", parkOutline: "#bdcfbb",
+        water: "#a8d1d6", waterOutline: "#94c3c9", boundary: "#798d87",
+        street: "#fffefa", mainStreet: "#fffefa", mainStreetCasing: "#cbc7bc",
+        streetLabel: "#535c59", cityLabel: "#253b36", halo: "#faf8f1",
+        building: "#c4c6bb", buildingOutline: "#9da39b",
+        buildingLow: "#d6cbbc", buildingMid: "#aab9b1", buildingHigh: "#778f88"
     )
 
     static let oscuro = Paleta(
@@ -54,7 +57,7 @@ struct EstiloMapa {
         let datos = try JSONSerialization.data(withJSONObject: estilo(), options: [.sortedKeys])
         let carpeta = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         // Un nombre por combinación: MapLibre recarga al cambiar la URL.
-        let nombre = "estilo-\(tema.rawValue)-\(edificiosTapan ? "tapan" : "debajo")-\(origen.clave).json"
+        let nombre = "estilo-\(tema.rawValue)-\(edificiosTapan ? "tapan" : "debajo")-\(ronda1 ? "r1" : "r0")-\(origen.clave).json"
         let url = carpeta.appendingPathComponent(nombre)
         try datos.write(to: url, options: .atomic)
         return url
@@ -80,8 +83,8 @@ struct EstiloMapa {
 
     private func capas() -> [[String: Any]] {
         let p = paleta
-        let suelo = capasSuelo(p)
-        let nombresCalles = capaNombresCalles(p)
+        let suelo = ronda1 ? capasSueloRonda1(p, Self.paletaRonda1(tema)) : capasSuelo(p)
+        let nombresCalles = ronda1 ? capasNombresRonda1(p, Self.paletaRonda1(tema)) : [capaNombresCalles(p)]
         let rutas = capasTransporte()
         let edificios = capasEdificios(p)
         let pueblos = capaPueblos(p)
@@ -89,9 +92,9 @@ struct EstiloMapa {
         // se dibuja antes que los edificios, y estos lo tapan cuando queda detrás.
         // Sin él, como en el visor web: los edificios primero y lo demás flotando encima.
         if edificiosTapan {
-            return suelo + [nombresCalles] + rutas + edificios + [pueblos]
+            return suelo + nombresCalles + rutas + edificios + [pueblos]
         } else {
-            return suelo + edificios + [nombresCalles] + rutas + [pueblos]
+            return suelo + edificios + nombresCalles + rutas + [pueblos]
         }
     }
 

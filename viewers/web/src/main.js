@@ -5,7 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './viewer.css';
 import { addTransitLayers, setTransitVisible } from './features/transit.js';
 import { addBuildingLayers, setBuildingVisibility } from './map/buildings.js';
-import { applyTheme, baseStyle } from './map/style.js';
+import { addShieldImages, applyTheme, baseStyle } from './map/style.js';
 
 setWorkerUrl(new URL(mapWorkerURL, location.href).href);
 addProtocol('pmtiles', new Protocol().tile);
@@ -29,8 +29,11 @@ const map = new Map({
   renderWorldCopies: false,
   attributionControl: false,
   maxPitch: 65,
+  // La vista queda en la dirección (#zoom/lat/lon/rumbo/inclinación): se puede compartir o volver a ella.
+  hash: true,
 });
 
+addShieldImages(map);
 map.addControl(new NavigationControl({ visualizePitch: true }), 'top-right');
 map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left');
 
@@ -43,15 +46,16 @@ map.on('load', async () => {
   addTransitLayers(map);
   addBuildingLayers(map, buildingControl.checked);
   addBuildingInteraction(map);
-  addRouteOptions(await loadRoutes());
+  // rutas.geojson es una FeatureCollection: las rutas están en .features.
+  addRouteOptions((await loadRoutes()).features ?? []);
   setTransitVisible(map, transitControl.checked);
   status.textContent = 'Miami-Dade · 605.762 edificios · 567.911 con altura';
-  map.fitBounds(bounds, { padding: 28, duration: 0 });
+  if (!location.hash) map.fitBounds(bounds, { padding: 28, duration: 0 });
 });
 
 themeControl.addEventListener('change', () => {
-  applyTheme(map, themeControl.value);
   document.documentElement.dataset.theme = themeControl.value;
+  applyTheme(map, themeControl.value);
 });
 
 buildingControl.addEventListener('change', () => setBuildingVisibility(map, buildingControl.checked));
