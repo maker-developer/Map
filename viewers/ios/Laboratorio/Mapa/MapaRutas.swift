@@ -82,7 +82,8 @@ extension MapaMapLibre.Coordinador {
         var etiquetas: [MLNPointFeature] = []
         var hecho: [MLNPolylineFeature] = []
         for (i, ruta) in rutas.enumerated() where ruta.coordenadas.count > 1 {
-            var tramo = ruta.coordenadas
+            // La geometría viene de OpenStreetMap y nuestras calles del condado: se dibuja pegada a ellas.
+            var tramo = coordenadasDibujo(ruta)
             // Navegando: lo recorrido va aparte (gris claro) y en azul solo lo que falta.
             if navegador.fase == .navegando, i == elegida {
                 let corte = min(navegador.indiceRecorrido, tramo.count - 2)
@@ -98,7 +99,7 @@ extension MapaMapLibre.Coordinador {
             // Durante la navegación no hacen falta los tiempos encima.
             if navegador.fase == .ruta {
                 let punto = MLNPointFeature()
-                punto.coordinate = ruta.coordenadas[ruta.coordenadas.count / 2]
+                punto.coordinate = tramo[tramo.count / 2]
                 punto.attributes = ["eta": FormatoRuta.duracion(ruta.duracion), "elegida": i == elegida]
                 etiquetas.append(punto)
             }
