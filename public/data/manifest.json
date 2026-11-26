@@ -8,7 +8,7 @@
     "calles": {
       "file": "calles.geojson",
       "count": 116465,
-      "bytes": 19939302
+      "bytes": 26347683
     },
     "agua": {
       "file": "agua.geojson",
@@ -59,7 +59,7 @@
     },
     "base": {
       "file": "base.pmtiles",
-      "bytes": 16630468
+      "bytes": 19519565
     },
     "transit": {
       "file": "transit.pmtiles",
@@ -67,6 +67,26 @@
       "stops": 7038,
       "routes": 215,
       "optional": true
+    },
+    "playas": {
+      "file": "playas.geojson",
+      "count": 19,
+      "bytes": 81514
+    },
+    "profundidad": {
+      "file": "profundidad.geojson",
+      "count": 1767,
+      "bytes": 1346581
+    },
+    "agua-nombres": {
+      "file": "agua-nombres.geojson",
+      "count": 83,
+      "bytes": 10344
+    },
+    "agua-ejes": {
+      "file": "agua-ejes.geojson",
+      "count": 4,
+      "bytes": 11170
     }
   },
   "zones": {
@@ -116,5 +136,5 @@
       "bearing": -21
     }
   },
-  "generated": "2026-11-25"
+  "generated": "2026-11-26"
 }
