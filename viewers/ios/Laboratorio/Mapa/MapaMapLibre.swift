@@ -132,6 +132,8 @@ struct MapaMapLibre: UIViewRepresentable {
     var vista3D: Bool? = nil
     /// Sube para volver a volar a la misma zona (p. ej. elegida otra vez en la búsqueda).
     var repetirVuelo: Int = 0
+    /// Margen de la brújula (arriba a la derecha) para que no quede debajo de otros controles.
+    var margenBrujula: CGPoint? = nil
 
     func makeCoordinator() -> Coordinador { Coordinador(self) }
 
@@ -150,6 +152,7 @@ struct MapaMapLibre: UIViewRepresentable {
         mapa.attributionButton.isHidden = true
         mapa.showsUserLocation = true
         mapa.compassViewPosition = .topRight
+        if let margenBrujula { mapa.compassViewMargins = margenBrujula }
         mapa.minimumZoomLevel = 7
         mapa.maximumZoomLevel = 20
         mapa.setCenter(zona.centro, zoomLevel: zona.zoom, direction: zona.rumbo, animated: false)

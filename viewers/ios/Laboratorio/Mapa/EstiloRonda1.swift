@@ -30,7 +30,7 @@ extension EstiloMapa {
                 local: "#c9ccce", localBorde: "#fbfbf9",
                 servicio: "#d8dadb", peatonal: "#e9dcc9", puenteSombra: "#3d4a52",
                 arena: "#f6edd1", arenaBorde: "#ece0bc",
-                profundidad: ["#bde5f7", "#aedcf4", "#9cd4f1", "#8bcaec", "#79bfe6"],
+                profundidad: ["#b2def5", "#a7d9f3", "#9cd4f1", "#93cfee", "#89c9eb"],
                 aguaTexto: "#4b88ab", aguaHalo: "#c9e9f8"
             )
         case .oscuro:
@@ -41,7 +41,7 @@ extension EstiloMapa {
                 local: "#3c4044", localBorde: "#191b1d",
                 servicio: "#33373a", peatonal: "#4a4237", puenteSombra: "#000000",
                 arena: "#3d3827", arenaBorde: "#4a4430",
-                profundidad: ["#2c5470", "#264b65", "#21435a", "#1c3a4f", "#173244"],
+                profundidad: ["#264b64", "#23465e", "#204158", "#1d3c52", "#1a374c"],
                 aguaTexto: "#8fbad8", aguaHalo: "#172b3a"
             )
         }
@@ -210,6 +210,22 @@ extension EstiloMapa {
 
     // MARK: - Nombres y escudos
 
+    /// Escudos de autopista (I-95, US-1, SR-836, Turnpike): van **encima de los edificios**
+    /// (si no, las casas en 3D los manchan y las torres los tapan).
+    func capaEscudosRonda1() -> [String: Any] {
+        ["id": "escudos", "type": "symbol", "source": "base", "source-layer": "calles", "minzoom": 9,
+             "filter": ["all", ["has", "ref"], ["!=", ["get", "ref"], ""], Self.esClase(["autopista", "principal"])],
+             "layout": [
+                "symbol-placement": "line", "symbol-spacing": ["interpolate", ["linear"], ["zoom"], 9, 320, 15, 640],
+                "icon-image": ["concat", "escudo-", Self.red],
+                "icon-text-fit": "both", "icon-text-fit-padding": [1.5, 4, 1.5, 4],
+                "icon-rotation-alignment": "viewport", "text-rotation-alignment": "viewport",
+                "text-field": ["get", "ref"], "text-font": ["literal", ["DMSans-SemiBold"]], "text-size": 10,
+                "symbol-sort-key": 0,
+             ],
+             "paint": ["text-color": ["match", Self.red, ["I", "TP"], "#ffffff", "#1d2421"]]]
+    }
+
     func capasNombresRonda1(_ p: Paleta, _ r: PaletaRonda1) -> [[String: Any]] {
         let tamanoAgua: [Any] = ["interpolate", ["linear"], ["zoom"], 9, 11, 13, 14, 16, 17]
         let textoAgua: [String: Any] = [
@@ -230,18 +246,6 @@ extension EstiloMapa {
                               18, ["match", Self.clase, ["autopista", "principal"], 14, 12.5]],
              ],
              "paint": ["text-color": p.streetLabel, "text-halo-color": p.halo, "text-halo-width": 1.4]],
-            // Escudos de autopista (I-95, US-1, SR-836, Turnpike): el número dentro de su forma.
-            ["id": "escudos", "type": "symbol", "source": "base", "source-layer": "calles", "minzoom": 9,
-             "filter": ["all", ["has", "ref"], ["!=", ["get", "ref"], ""], Self.esClase(["autopista", "principal"])],
-             "layout": [
-                "symbol-placement": "line", "symbol-spacing": ["interpolate", ["linear"], ["zoom"], 9, 260, 15, 520],
-                "icon-image": ["concat", "escudo-", Self.red],
-                "icon-text-fit": "both", "icon-text-fit-padding": [2, 5, 2, 5],
-                "icon-rotation-alignment": "viewport", "text-rotation-alignment": "viewport",
-                "text-field": ["get", "ref"], "text-font": ["literal", ["DMSans-SemiBold"]], "text-size": 10.5,
-                "symbol-sort-key": 0,
-             ],
-             "paint": ["text-color": ["match", Self.red, ["I", "TP"], "#ffffff", "#1d2421"]]],
             // Agua: los ríos siguen su curva; la bahía y el océano, en cursiva y espaciados.
             ["id": "agua-ejes", "type": "symbol", "source": "base", "source-layer": "agua-ejes", "minzoom": 12,
              "layout": ["symbol-placement": "line", "symbol-spacing": 320, "text-field": ["get", "name"],

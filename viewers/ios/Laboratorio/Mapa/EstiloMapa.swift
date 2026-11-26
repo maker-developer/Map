@@ -124,10 +124,12 @@ struct EstiloMapa {
         // Con «edificios tapan», todo lo que va pegado al suelo (nombres de calles, rutas, paradas)
         // se dibuja antes que los edificios, y estos lo tapan cuando queda detrás.
         // Sin él, como en el visor web: los edificios primero y lo demás flotando encima.
+        // Los escudos siempre encima de todo (menos los municipios).
+        let escudos: [[String: Any]] = ronda1 ? [capaEscudosRonda1()] : []
         if edificiosTapan {
-            return suelo + nombresCalles + rutas + edificios + [pueblos]
+            return suelo + nombresCalles + rutas + edificios + escudos + [pueblos]
         } else {
-            return suelo + edificios + nombresCalles + rutas + [pueblos]
+            return suelo + edificios + nombresCalles + rutas + escudos + [pueblos]
         }
     }
 

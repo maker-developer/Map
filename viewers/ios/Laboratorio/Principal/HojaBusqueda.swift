@@ -13,6 +13,8 @@ struct HojaBusqueda: View {
     let elegirZona: (Zona) -> Void
 
     @State private var consulta = ""
+
+    private var recogida: Bool { hoja == .height(Self.alturaMinima) }
     @State private var verLaboratorio = false
     @FocusState private var escribiendo: Bool
 
@@ -37,8 +39,12 @@ struct HojaBusqueda: View {
                 .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
+            // Recogida, la hoja enseña solo la barra (como Apple Maps).
+            .opacity(recogida ? 0 : 1)
+            .allowsHitTesting(!recogida)
         }
         .animation(.snappy, value: tocado)
+        .animation(.easeOut(duration: 0.2), value: recogida)
         .onChange(of: escribiendo) { _, activo in
             if activo { hoja = .large }
         }

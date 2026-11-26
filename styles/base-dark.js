@@ -28,7 +28,7 @@ export const dark = {
     local: '#3c4044', localBorde: '#191b1d',
     servicio: '#33373a', peatonal: '#4a4237', puenteSombra: '#000000',
     arena: '#3d3827', arenaBorde: '#4a4430',
-    profundidad: ['#2c5470', '#264b65', '#21435a', '#1c3a4f', '#173244'],
+    profundidad: ['#264b64', '#23465e', '#204158', '#1d3c52', '#1a374c'],
     aguaTexto: '#8fbad8', aguaHalo: '#172b3a',
   },
 };

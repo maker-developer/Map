@@ -30,7 +30,7 @@ export const light = {
     local: '#c9ccce', localBorde: '#fbfbf9',
     servicio: '#d8dadb', peatonal: '#e9dcc9', puenteSombra: '#3d4a52',
     arena: '#f6edd1', arenaBorde: '#ece0bc',
-    profundidad: ['#bde5f7', '#aedcf4', '#9cd4f1', '#8bcaec', '#79bfe6'],
+    profundidad: ['#b2def5', '#a7d9f3', '#9cd4f1', '#93cfee', '#89c9eb'],
     aguaTexto: '#4b88ab', aguaHalo: '#c9e9f8',
   },
 };

@@ -31,7 +31,9 @@ struct MapaPrincipal: View {
                     tocado: $tocado,
                     centrarEnMi: centrarEnMi,
                     vista3D: vista3D,
-                    repetirVuelo: repetirVuelo
+                    repetirVuelo: repetirVuelo,
+                    // Debajo de la columna de controles (capas, 2D / 3D, ubicación).
+                    margenBrujula: CGPoint(x: 23, y: 172)
                 )
                 .ignoresSafeArea()
             }
