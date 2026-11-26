@@ -77,6 +77,36 @@ enum Lc: String {
     var imagen: Image { Image("lc.\(rawValue)") }
 }
 
+/// Íconos de redes sociales (Phosphor, MIT) en Assets › Redes, con el color de cada marca.
+/// Lucide no trae logos de marcas. Los negros toman el color del texto (se ven bien en modo oscuro).
+enum RedSocial: String {
+    case facebook, whatsapp, instagram, threads, tiktok, x
+
+    /// «Instagram», «TikTok»… (o la red que diga el dato) → su ícono, si lo hay.
+    init?(nombre: String) {
+        switch nombre.lowercased() {
+        case "facebook": self = .facebook
+        case "whatsapp": self = .whatsapp
+        case "instagram": self = .instagram
+        case "threads": self = .threads
+        case "tiktok": self = .tiktok
+        case "x", "twitter": self = .x
+        default: return nil
+        }
+    }
+
+    var imagen: Image { Image("red.\(rawValue)") }
+
+    var color: Color {
+        switch self {
+        case .facebook: Color(red: 0, green: 0x61 / 255, blue: 0xfe / 255)
+        case .whatsapp: Color(red: 0x32 / 255, green: 0xc7 / 255, blue: 0x59 / 255)
+        case .instagram: Color(red: 0xb9 / 255, green: 0x2d / 255, blue: 0x5d / 255)
+        case .threads, .tiktok, .x: Color.primary
+        }
+    }
+}
+
 /// Un ícono Lucide como plantilla (toma el color de `foregroundStyle`) y crece con la letra del sistema.
 struct Icono: View {
     let icono: Lc

@@ -87,7 +87,7 @@ struct FichaLugar: Equatable {
                 guard let v = valor as? String else { continue }
                 let red = clave.replacingOccurrences(of: "contact:", with: "")
                 if let u = Self.url(v) ?? Self.urlRed(red, usuario: v) {
-                    listaRedes.append(Red(nombre: red.capitalized, url: u))
+                    listaRedes.append(Red(nombre: Self.nombreRed(u), url: u))
                 }
             }
         }
@@ -126,6 +126,10 @@ struct FichaLugar: Equatable {
         case "twitter", "x": return URL(string: "https://x.com/\(u)")
         case "tiktok": return URL(string: "https://tiktok.com/@\(u)")
         case "youtube": return URL(string: "https://youtube.com/@\(u)")
+        case "threads": return URL(string: "https://threads.net/@\(u)")
+        case "whatsapp":
+            let numero = u.filter(\.isNumber)
+            return numero.isEmpty ? nil : URL(string: "https://wa.me/\(numero)")
         default: return nil
         }
     }
@@ -134,6 +138,8 @@ struct FichaLugar: Equatable {
         let host = (u.host() ?? "").replacingOccurrences(of: "www.", with: "")
         if host.contains("instagram") { return "Instagram" }
         if host.contains("facebook") { return "Facebook" }
+        if host.contains("whatsapp") || host == "wa.me" { return "WhatsApp" }
+        if host.contains("threads") { return "Threads" }
         if host.contains("twitter") || host == "x.com" { return "X" }
         if host.contains("tiktok") { return "TikTok" }
         if host.contains("youtube") { return "YouTube" }

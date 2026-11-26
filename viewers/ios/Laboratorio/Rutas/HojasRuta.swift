@@ -335,7 +335,7 @@ struct HojaLugar: View {
             filas.append(AnyView(enlaceFila("Correo", correo, .arroba, URL(string: "mailto:\(correo)"))))
         }
         for red in ficha.redes {
-            filas.append(AnyView(enlaceFila(red.nombre, Self.bonita(red.url), .enlace, red.url)))
+            filas.append(AnyView(enlaceFila(red.nombre, Self.bonita(red.url), .enlace, red.url, marca: RedSocial(nombre: red.nombre))))
         }
         if !direccion.isEmpty {
             filas.append(AnyView(detalle("Dirección", direccion) { copiar(direccion.replacingOccurrences(of: "\n", with: ", ")) }))
@@ -355,7 +355,7 @@ struct HojaLugar: View {
     }
 
     /// Una fila que se toca para llamar o abrir (el valor en azul, como Apple Maps).
-    private func enlaceFila(_ titulo: String, _ valor: String, _ icono: Lc, _ url: URL?) -> some View {
+    private func enlaceFila(_ titulo: String, _ valor: String, _ icono: Lc, _ url: URL?, marca: RedSocial? = nil) -> some View {
         Button {
             if let url { abrirURL(url) }
         } label: {
@@ -365,7 +365,18 @@ struct HojaLugar: View {
                     Text(valor).font(.subheadline).foregroundStyle(Color.blue).lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                Icono(icono, tamano: 17).foregroundStyle(Color.blue)
+                if let marca {
+                    // Logo de la red con su color (Facebook azul, WhatsApp verde, Instagram rosa…).
+                    marca.imagen
+                        .resizable()
+                        .renderingMode(.template)
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .foregroundStyle(marca.color)
+                        .accessibilityHidden(true)
+                } else {
+                    Icono(icono, tamano: 17).foregroundStyle(Color.blue)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
