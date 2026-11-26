@@ -1,0 +1,6 @@
+node_modules/
+viewers/web/node_modules/
+viewers/web/dist/
+data/gtfs/
+data/.cache/
+.DS_Store

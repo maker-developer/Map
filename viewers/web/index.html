@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f5f5f0">
+    <title>Map · Miami-Dade</title>
+    <meta name="description" content="Mapa independiente de Miami-Dade, construido con datos geográficos propios.">
+  </head>
+  <body>
+    <main class="map-shell">
+      <section id="map" aria-label="Mapa de Miami-Dade"></section>
+      <a class="attribution" href="https://opendata.miamidade.gov/" target="_blank" rel="noreferrer">Datos geográficos de Miami-Dade · U.S. Census</a>
+      <header class="map-toolbar">
+        <div class="map-identity">
+          <span class="map-name">Map</span>
+          <span id="map-status" role="status">Cargando el mapa…</span>
+        </div>
+        <div class="map-tools">
+          <label class="control" for="theme">
+            <span>Apariencia</span>
+            <select id="theme">
+              <option value="light">Clara</option>
+              <option value="dark">Oscura</option>
+            </select>
+          </label>
+          <label class="control" for="buildings">
+            <span>Edificios 3D</span>
+            <input id="buildings" type="checkbox" checked>
+          </label>
+          <details id="transit">
+            <summary>Transporte</summary>
+            <div class="transit-options">
+              <label><input class="transit-toggle" type="checkbox" checked> Mostrar rutas y paradas</label>
+              <label for="route">Filtrar ruta</label>
+              <select id="route"><option value="">Todas las rutas</option></select>
+            </div>
+          </details>
+        </div>
+      </header>
+      <p id="map-error" role="alert" hidden></p>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

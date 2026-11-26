@@ -1,0 +1,17 @@
+{
+  "name": "map-miami",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config viewers/web/vite.config.js --host 0.0.0.0",
+    "build": "vite build --config viewers/web/vite.config.js",
+    "preview": "vite preview --config viewers/web/vite.config.js --host 0.0.0.0"
+  },
+  "dependencies": {
+    "maplibre-gl": "6.19.0",
+    "pmtiles": "4.5.0"
+  },
+  "devDependencies": {
+    "vite": "8.3.8"
+  }
+}
