@@ -84,12 +84,17 @@ struct Icono: View {
 extension View {
     /// Liquid Glass en iOS 26; material del sistema en iOS 18.
     @ViewBuilder
-    func vidrio<S: Shape>(_ forma: S, interactivo: Bool = false) -> some View {
+    func vidrio<S: Shape>(_ forma: S, interactivo: Bool = false, tinte: Color? = nil) -> some View {
         if #available(iOS 26.0, *) {
-            self.glassEffect(.regular.interactive(interactivo), in: forma)
+            self.glassEffect(.regular.tint(tinte).interactive(interactivo), in: forma)
         } else {
-            self.background(.regularMaterial, in: forma)
-                .overlay(forma.stroke(Color.primary.opacity(0.08), lineWidth: 0.5))
+            self.background {
+                ZStack {
+                    forma.fill(.regularMaterial)
+                    if let tinte { forma.fill(tinte.opacity(0.18)) }
+                }
+            }
+            .overlay(forma.stroke(Color.primary.opacity(0.08), lineWidth: 0.5))
         }
     }
 }

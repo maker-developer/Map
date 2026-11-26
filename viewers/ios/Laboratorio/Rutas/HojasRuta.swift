@@ -435,7 +435,7 @@ struct BannerManiobra: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 14) {
                 Icono(navegador.llegaste ? .bandera : (paso?.icono ?? .flechaArriba), tamano: 40)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.primary)
                 VStack(alignment: .leading, spacing: 2) {
                     if navegador.llegaste {
                         Text("Has llegado")
@@ -452,7 +452,7 @@ struct BannerManiobra: View {
                             .lineLimit(2)
                     }
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.primary)
                 Spacer(minLength: 0)
             }
 
@@ -461,9 +461,9 @@ struct BannerManiobra: View {
                 HStack(spacing: 6) {
                     ForEach(paso.carriles) { carril in
                         Icono(carril.icono, tamano: 22)
-                            .foregroundStyle(carril.valido ? Color.white : Color.white.opacity(0.3))
+                            .foregroundStyle(carril.valido ? Color.primary : Color.primary.opacity(0.25))
                             .frame(width: 34, height: 34)
-                            .background(carril.valido ? Color.white.opacity(0.16) : Color.clear,
+                            .background(carril.valido ? Color.primary.opacity(0.09) : Color.clear,
                                         in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                 }
@@ -484,7 +484,7 @@ struct BannerManiobra: View {
                         }
                     }
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.9))
+                    .foregroundStyle(.secondary)
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 } else if ruta.pasos.indices.contains(navegador.pasoActual + 2) {
                     let luego = ruta.pasos[navegador.pasoActual + 2]
@@ -493,13 +493,14 @@ struct BannerManiobra: View {
                         Icono(luego.icono, tamano: 14)
                     }
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(.secondary)
                 }
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(red: 0.11, green: 0.36, blue: 0.27), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        // Liquid Glass (antes, verde oscuro).
+        .vidrio(RoundedRectangle(cornerRadius: 26, style: .continuous), interactivo: true)
         .padding(.horizontal, 12)
         .contentShape(Rectangle())
         .onTapGesture { withAnimation(.snappy) { verPrevia.toggle() } }
@@ -523,6 +524,8 @@ struct BannerManiobra: View {
 /// y los próximos pasos. Al llegar, la pantalla de llegada.
 struct HojaNavegacion: View {
     let navegador: Navegador
+    /// La barra está subida: se ven «Finalizar» y las opciones. Recogida, solo las cifras.
+    var expandida = false
 
     var body: some View {
         Group {
@@ -531,24 +534,30 @@ struct HojaNavegacion: View {
             } else {
                 VStack(spacing: 18) {
                     cifras
-                    ScrollView {
-                        VStack(spacing: 14) {
-                            Button {
-                                navegador.finalizar()
-                            } label: {
-                                Text("Finalizar ruta")
-                                    .font(.headline)
-                                    .frame(maxWidth: .infinity, minHeight: 50)
+                    if expandida {
+                        ScrollView {
+                            VStack(spacing: 14) {
+                                // «Finalizar» en Liquid Glass con tinte rojo (no un bloque rojo sólido).
+                                Button {
+                                    navegador.finalizar()
+                                } label: {
+                                    Text("Finalizar ruta")
+                                        .font(.headline)
+                                        .foregroundStyle(Color.red)
+                                        .frame(maxWidth: .infinity, minHeight: 52)
+                                        .vidrio(Capsule(), interactivo: true, tinte: .red.opacity(0.35))
+                                        .contentShape(Capsule())
+                                }
+                                .buttonStyle(.presionable)
+                                opciones
                             }
-                            .buttonStyle(.borderedProminent)
-                            .buttonBorderShape(.roundedRectangle(radius: 14))
-                            .tint(.red)
-                            opciones
+                            .padding(.bottom, 24)
                         }
-                        .padding(.bottom, 24)
+                        .scrollIndicators(.hidden)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
                     }
-                    .scrollIndicators(.hidden)
                 }
+                .animation(.spring(response: 0.35, dampingFraction: 0.86), value: expandida)
             }
         }
         .padding(.horizontal, 20)

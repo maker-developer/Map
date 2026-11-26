@@ -147,7 +147,7 @@ struct MapaPrincipal: View {
                 case .ruta:
                     HojaRuta(navegador: navegador)
                 case .navegando:
-                    HojaNavegacion(navegador: navegador)
+                    HojaNavegacion(navegador: navegador, expandida: hoja != .height(Self.alturaNavegacion))
                 }
             }
             // Cambio suave entre búsqueda, ficha, ruta y navegación.
