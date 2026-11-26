@@ -5,6 +5,7 @@ import SwiftUI
 /// El ícono del matraz, junto a la búsqueda, abre el modo laboratorio para probar cosas nuevas.
 struct MapaPrincipal: View {
     @Environment(\.colorScheme) private var esquema
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     /// «auto» sigue al iPhone; «claro» u «oscuro» lo fijan.
     @AppStorage("apariencia") private var apariencia = "auto"
     @AppStorage("vista3D") private var vista3D = true
@@ -29,13 +30,17 @@ struct MapaPrincipal: View {
     /// Alturas de la hoja según lo que se está haciendo.
     private static let alturaRutaMinima: CGFloat = 300
     private static let alturaNavegacion: CGFloat = 100
+    private var horizontal: Bool { verticalSizeClass == .compact }
     private var alturas: Set<PresentationDetent> {
+        // En apaisado, los detents fijos de retrato pueden dejar la hoja expandida
+        // pero con su contenido todavía marcado como «recogido».
+        if horizontal { return Set([PresentationDetent.medium, .large]) }
         switch navegador.fase {
-        case .libre: [.height(HojaBusqueda.alturaMinima), .height(HojaBusqueda.alturaFicha), .medium, .large]
-        case .lugar: [.height(alturaLugar), .medium, .large]
-        case .ruta: [.height(Self.alturaRutaMinima), .medium, .large]
+        case .libre: return [.height(HojaBusqueda.alturaMinima), .height(HojaBusqueda.alturaFicha), .medium, .large]
+        case .lugar: return [.height(alturaLugar), .medium, .large]
+        case .ruta: return [.height(Self.alturaRutaMinima), .medium, .large]
         // Navegando: la barra, y al subirla las opciones (resumen, pasos, compartir llegada…).
-        case .navegando: [.height(Self.alturaNavegacion), .medium]
+        case .navegando: return [.height(Self.alturaNavegacion), .medium]
         }
     }
 
@@ -139,7 +144,7 @@ struct MapaPrincipal: View {
                         navegador: navegador,
                         elegirZona: { nueva in
                             if nueva == zona { repetirVuelo += 1 } else { zona = nueva }
-                            hoja = .height(HojaBusqueda.alturaMinima)
+                            hoja = horizontal ? .medium : .height(HojaBusqueda.alturaMinima)
                         }
                     )
                 case .lugar:
@@ -163,6 +168,10 @@ struct MapaPrincipal: View {
         .onChange(of: vista3D) { _, nuevo in estilo.edificios3D = nuevo }
         // La hoja se pone a la altura que toca en cada paso (ficha, ruta, navegación).
         .onChange(of: navegador.fase) { _, fase in
+            if horizontal {
+                hoja = .medium
+                return
+            }
             switch fase {
             case .libre: hoja = .height(HojaBusqueda.alturaMinima)
             case .lugar: hoja = .height(alturaLugar)
@@ -173,13 +182,35 @@ struct MapaPrincipal: View {
         .sensoryFeedback(.impact(weight: .light), trigger: navegador.fase)
         // La ficha cambia de alto (p. ej. al llegar la dirección): la hoja la acompaña.
         .onChange(of: alturaLugar) { _, nueva in
-            if navegador.fase == .lugar { withAnimation(.snappy) { hoja = .height(nueva) } }
+            if navegador.fase == .lugar {
+                withAnimation(.snappy) { hoja = horizontal ? .medium : .height(nueva) }
+            }
+        }
+        .onChange(of: verticalSizeClass) { _, size in
+            withAnimation(.snappy) {
+                if size == .compact {
+                    hoja = .medium
+                } else {
+                    switch navegador.fase {
+                    case .libre: hoja = .height(HojaBusqueda.alturaMinima)
+                    case .lugar: hoja = .height(alturaLugar)
+                    case .ruta: hoja = .medium
+                    case .navegando: hoja = .height(Self.alturaNavegacion)
+                    }
+                }
+            }
         }
         .onChange(of: esquema) { aplicarApariencia() }
         .onChange(of: apariencia) { aplicarApariencia() }
         .onChange(of: tocado) { _, nuevo in
             // Al tocar algo en el mapa, la hoja sube un poco para enseñar su ficha.
-            if nuevo != nil, hoja == .height(HojaBusqueda.alturaMinima) { hoja = .height(HojaBusqueda.alturaFicha) }
+            if nuevo != nil {
+                if horizontal {
+                    hoja = .medium
+                } else if hoja == .height(HojaBusqueda.alturaMinima) {
+                    hoja = .height(HojaBusqueda.alturaFicha)
+                }
+            }
         }
         .sensoryFeedback(.selection, trigger: vista3D)
     }

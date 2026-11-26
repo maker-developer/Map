@@ -5,6 +5,7 @@ import SwiftUI
 /// La búsqueda de direcciones y lugares llega en la ronda 2 (`equipo/hoja-de-ruta.md`);
 /// por ahora busca entre las zonas del condado.
 struct HojaBusqueda: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     static let alturaMinima: CGFloat = 96
     static let alturaFicha: CGFloat = 250
 
@@ -15,7 +16,7 @@ struct HojaBusqueda: View {
 
     @State private var consulta = ""
 
-    private var recogida: Bool { hoja == .height(Self.alturaMinima) }
+    private var recogida: Bool { verticalSizeClass != .compact && hoja == .height(Self.alturaMinima) }
     @State private var verLaboratorio = false
     /// «Casa» o «Trabajo» sin guardar: se explica cómo añadirlo.
     @State private var pistaAnadir: String?
@@ -33,7 +34,7 @@ struct HojaBusqueda: View {
                     if let tocado {
                         FichaTocado(elemento: tocado) {
                             withAnimation(.snappy) { self.tocado = nil }
-                            hoja = .height(Self.alturaMinima)
+                            hoja = verticalSizeClass == .compact ? .medium : .height(Self.alturaMinima)
                         }
                     }
                     if consulta.isEmpty {
