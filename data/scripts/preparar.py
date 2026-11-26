@@ -8,6 +8,7 @@ import re
 import subprocess
 import time
 from urllib.parse import urlencode
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -289,11 +290,21 @@ def named_water_layers(refresh):
                  '(25.18,-81.0,26.05,-79.65););out geom;'
                  '(way["natural"="water"]["name"](25.18,-81.0,26.05,-79.65);'
                  'relation["natural"="water"]["name"](25.18,-81.0,26.05,-79.65););out center;')
-        req = Request("https://overpass-api.de/api/interpreter", data=query.encode(),
-                      headers={"Content-Type": "application/x-www-form-urlencoded",
-                               "User-Agent": "Map Miami-Dade data pipeline/1.0"})
-        with urlopen(req, timeout=90) as response:
-            source.write_bytes(response.read())
+        last_error = None
+        for endpoint in ("https://overpass-api.de/api/interpreter",
+                         "https://overpass.kumi.systems/api/interpreter"):
+            req = Request(endpoint, data=query.encode(),
+                          headers={"Content-Type": "application/x-www-form-urlencoded",
+                                   "User-Agent": "Map Miami-Dade data pipeline/1.0"})
+            try:
+                with urlopen(req, timeout=90) as response:
+                    source.write_bytes(response.read())
+                break
+            except (HTTPError, URLError, TimeoutError) as error:
+                last_error = error
+        else:
+            if not source.exists():
+                raise RuntimeError(f"No se pudo descargar el extracto OSM y no hay caché: {last_error}")
     elements = json.loads(source.read_text(encoding="utf-8"))["elements"]
     axes, labels = {}, [
         feature({"type": "Point", "coordinates": [-80.18, 25.66]}, name="Biscayne Bay"),
