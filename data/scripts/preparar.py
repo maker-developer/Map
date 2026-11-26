@@ -154,11 +154,17 @@ def tile_archive(tippecanoe, path, inputs):
     staging.replace(path)
 
 
-def base_tiles(tippecanoe):
+def base_tiles(tippecanoe, base_only=False):
     zooms = {"condado": 7, "calles": 8, "agua": 7, "parques": 9, "playas": 9,
-             "paradas": 13, "rutas": 10}
-    sources = {name: ROOT / "data" / ".cache" / f"{name}.ndjson" for name in ("base", "transit")}
-    output_files = {"base": DATOS / "base.pmtiles", "transit": DATOS / "transit.pmtiles"}
+             "profundidad": 7, "paradas": 13, "rutas": 10}
+    if base_only:
+        zooms = {name: zoom for name, zoom in zooms.items()
+                 if name not in {"paradas", "rutas"}}
+        sources = {"base": ROOT / "data" / ".cache" / "base.ndjson"}
+        output_files = {"base": DATOS / "base.pmtiles"}
+    else:
+        sources = {name: ROOT / "data" / ".cache" / f"{name}.ndjson" for name in ("base", "transit")}
+        output_files = {"base": DATOS / "base.pmtiles", "transit": DATOS / "transit.pmtiles"}
     for source in sources.values():
         source.write_text("", encoding="utf-8")
     for name, zoom in zooms.items():
@@ -212,6 +218,65 @@ def street_ref(name):
     return aliases.get(upper, "")
 
 
+def bathymetry(refresh):
+    """Vectoriza bandas marinas del NOAA Florida Coastal Relief Model."""
+    import numpy as np
+    import contourpy
+    from netCDF4 import Dataset
+    from shapely.geometry import Polygon, mapping
+
+    path = DATOS / "profundidad.geojson"
+    if not refresh and path.exists():
+        return json.loads(path.read_text())["features"]
+
+    # CRM Vol. 3 ocupa 24–32 N y -84–-76 W, con celdas de 1 segundo de arco.
+    # Recorte Miami-Dade y la plataforma continental inmediata.
+    url = "https://www.ngdc.noaa.gov/thredds/dodsC/crm/cudem/crm_vol3_2023.nc"
+    lat0, lat1 = 4248, 7380  # 25.18–26.05 N
+    lon0, lon1 = 10800, 15660  # -81.00–-79.65 W
+    with Dataset(url) as dataset:
+        lat = np.asarray(dataset.variables["lat"][lat0:lat1], dtype="float64")
+        lon = np.asarray(dataset.variables["lon"][lon0:lon1], dtype="float64")
+        elevation = np.asarray(dataset.variables["z"][lat0:lat1, lon0:lon1], dtype="float32")
+    elevation[elevation <= -99990] = np.nan
+    generator = contourpy.contour_generator(x=lon, y=lat, z=elevation, fill_type="OuterOffset")
+    bands = [("0-1", -1, 0), ("1-2", -2, -1), ("2-5", -5, -2),
+             ("5-10", -10, -5), ("10+", float(np.nanmin(elevation)), -10)]
+    rows = []
+    for label, low, high in bands:
+        if low >= high:
+            continue
+        for points, offsets in zip(*generator.filled(low, high)):
+            rings = [Polygon(points[a:b]).buffer(0) for a, b in zip(offsets[:-1], offsets[1:])]
+            rings = [ring for ring in rings if not ring.is_empty and ring.area > 0]
+            # Anillo de mayor nivel de inclusión = exterior; anillos hijos impares = huecos.
+            parents = []
+            for ring in rings:
+                candidates = [i for i, other in enumerate(rings)
+                              if other.area > ring.area and other.contains(ring.representative_point())]
+                parents.append(min(candidates, key=lambda i: rings[i].area) if candidates else None)
+            depths = []
+            for i in range(len(rings)):
+                depth, parent, seen = 0, parents[i], {i}
+                while parent is not None and parent not in seen:
+                    depth += 1
+                    seen.add(parent)
+                    parent = parents[parent]
+                depths.append(depth)
+            for i, ring in enumerate(rings):
+                if depths[i] % 2:
+                    continue
+                holes = [list(rings[j].exterior.coords) for j, parent in enumerate(parents)
+                         if parent == i and depths[j] == depths[i] + 1]
+                polygon = Polygon(ring.exterior.coords, holes).simplify(0.0018, preserve_topology=True)
+                if polygon.is_empty or polygon.area < 0.00000015:
+                    continue
+                rows.append(feature(mapping(polygon), banda=label))
+    write("profundidad.geojson", collection(rows))
+    print(f"profundidad: {len(rows):,} polígonos NOAA", flush=True)
+    return rows
+
+
 def truthy(value):
     return str(value or "").strip().lower() in {"1", "true", "yes", "y", "t"}
 
@@ -263,9 +328,32 @@ def main():
     parser.add_argument("--gtfs-datos", type=Path, default=ROOT / "data" / "gtfs")
     parser.add_argument("--actualizar", action="store_true", help="Repetir las descargas de las capas geográficas.")
     parser.add_argument("--todo-condado", action="store_true", help="Generar teselas de edificios de todo el inventario.")
+    parser.add_argument("--solo-base", action="store_true", help="Actualizar base.pmtiles sin requerir GTFS ni reconstruir otros archivos.")
     parser.add_argument("--tippecanoe", default="tippecanoe", help="Ruta al ejecutable Tippecanoe.")
     args = parser.parse_args()
     DATOS.mkdir(parents=True, exist_ok=True)
+    if args.solo_base:
+        specs = [
+            ("condado", COUNTY, "NAME", named, {"where": "GEOID='12086'", "simplify": 0.00004}),
+            ("calles", service("StreetNetwork_gdb"),
+             "SNAME,ST_NAME,CLASS,RAMP,BRIDGE,TUNNEL,F_ZLEV,T_ZLEV", street, {"simplify": 0.000008}),
+            ("agua", service("Water_gdb"), "NAME", named, {"simplify": 0.000014}),
+            ("parques", service("MunicipalParkBoundary_gdb"), "NAME", named, {"simplify": 0.00001}),
+            ("playas", service("Beachpoly_gdb"), "NAME", named, {"simplify": 0.000004}),
+        ]
+        layers = {}
+        for name, layer, fields, transform, options in specs:
+            rows = build(name, layer, fields, transform, args.actualizar, **options)
+            layers[name] = layer_meta(f"{name}.geojson", rows)
+        depth_rows = bathymetry(args.actualizar)
+        layers["profundidad"] = layer_meta("profundidad.geojson", depth_rows)
+        tile_info = base_tiles(args.tippecanoe, base_only=True)
+        existing = json.loads((DATOS / "manifest.json").read_text()) if (DATOS / "manifest.json").exists() else {}
+        existing_layers = existing.get("layers", {})
+        existing_layers.update(layers)
+        existing_layers.update(tile_info)
+        write("manifest.json", {**existing, "layers": existing_layers, "generated": time.strftime("%Y-%m-%d")})
+        return
     bundle = read_bundle(args.gtfs_datos)
     build_jobs = [
         ("condado", COUNTY, "NAME", named, {"where": "GEOID='12086'", "simplify": 0.00004}),
@@ -292,6 +380,8 @@ def main():
         write(f"{name}.geojson", collection(rows))
         layers[name] = layer_meta(f"{name}.geojson", rows)
     if args.todo_condado:
+        depth_rows = bathymetry(args.actualizar)
+        layers["profundidad"] = layer_meta("profundidad.geojson", depth_rows)
         layers["edificios"] = county_building_tiles(args.tippecanoe, args.actualizar)
         layers.update(base_tiles(args.tippecanoe))
     write("manifest.json", {"layers": layers, "zones": ZONES, "generated": time.strftime("%Y-%m-%d")})

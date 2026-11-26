@@ -11,6 +11,7 @@ La primera versión usa capas descargadas del Open Data Hub de Miami-Dade y el l
 | Agua | [Water](https://services.arcgis.com/8Pc9XBTAsYuxx9Ny/arcgis/rest/services/Water_gdb/FeatureServer/0) | Geometrías simplificadas |
 | Parques | [Municipal Park Boundary](https://services.arcgis.com/8Pc9XBTAsYuxx9Ny/arcgis/rest/services/MunicipalParkBoundary_gdb/FeatureServer/0) | Parques municipales |
 | Playas | [Beachpoly](https://services.arcgis.com/8Pc9XBTAsYuxx9Ny/arcgis/rest/services/Beachpoly_gdb/FeatureServer/0) | Polígonos oficiales con `NAME`; 19 entidades en la consulta de ronda 1; geometría simplificada antes de teselar |
+| Profundidad costera | [NOAA/NCEI Coastal Relief Model, vol. 3, Florida and East Gulf (2023)](https://www.ncei.noaa.gov/products/coastal-relief-model) · [THREDDS NetCDF](https://www.ngdc.noaa.gov/thredds/dodsC/crm/cudem/crm_vol3_2023.nc) | Elevación en metros, resolución de 1 segundo de arco; se usa solo la parte marina bajo 0 m, se convierte a bandas de profundidad y simplifica con tolerancia aproximada de 200 m. No sirve para navegación. |
 | Huellas y alturas | [BuildingFootprint UBID/Folio](https://services.arcgis.com/8Pc9XBTAsYuxx9Ny/arcgis/rest/services/BuildingFootprintUBIDFolio_gdb/FeatureServer/0) | 605.762 huellas en la extracción inicial |
 | Transporte opcional | [Miami-Dade Transit GTFS](https://www.miamidade.gov/global/transportation/open-data-feeds.page) | Paradas y formas estáticas del feed |
 
@@ -38,6 +39,8 @@ La tabla sigue la definición oficial de Miami-Dade County para `CLASS`:
 | `9` | New Subdivision | `servicio` |
 
 El campo `RAMP` y el nombre con sufijo `RAMP` también clasifican rampas como `rampa`; `CLASS=0` ya es suficiente para identificarlas. `puente` es verdadero cuando el condado marca `BRIDGE` o el segmento tiene `F_ZLEV`/`T_ZLEV` por encima del nivel 0 (la definición del condado los describe como niveles elevados). `tunel` usa `TUNNEL`. En la consulta actual, `BRIDGE` y `TUNNEL` llegan vacíos; por ello no se infieren túneles. `ref` se obtiene de los códigos incluidos en `SNAME` y de alias locales explícitos; queda vacío si el nombre no identifica una ruta numerada.
+
+La capa `profundidad` cubre el condado y la plataforma costera inmediata (25.18–26.05° N, 81.00–79.65° W). El recorte retiene valores NOAA menores que el nivel 0 y asigna la profundidad como el negativo de la elevación a las bandas `0-1`, `1-2`, `2-5`, `5-10` y `10+`. Los polígonos se simplifican preservando topología; el pipeline aborta si el resultado requiere los datos NOAA y faltan las dependencias de `data/requirements.txt`.
 
 ## Rendición del mapa
 

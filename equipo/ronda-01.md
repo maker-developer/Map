@@ -8,7 +8,7 @@
 
 - [x] ✅ **C1. Calles con jerarquía.** Añadir a `calles` las propiedades `clase`, `puente`, `tunel` y `ref` según [`capas.md`](capas.md). Mantener `name` y `kind`. Documentar en `data/SOURCES.md` la tabla CLASS → `clase` y de dónde salen puente, túnel y número de vía.
 - [x] ✅ **C2. Playas.** Nueva capa `playas` (polígonos con `name`) en `base.pmtiles`. Documentar la fuente.
-- [ ] **C3. Profundidad del agua.** Nueva capa `profundidad` con bandas `0-1`, `1-2`, `2-5`, `5-10`, `10+` desde la batimetría de NOAA, simplificada para que `base.pmtiles` no crezca más de ~10 MB.
+- [x] ✅ **C3. Profundidad del agua.** Nueva capa `profundidad` con bandas `0-1`, `1-2`, `2-5`, `5-10`, `10+` desde la batimetría de NOAA, simplificada para que `base.pmtiles` no crezca más de ~10 MB.
 - [ ] **C4. Nombres del agua.** `name` relleno en las masas de agua principales, o capas `agua-nombres` (puntos) y `agua-ejes` (líneas de ríos) si la fuente no los trae.
 - [ ] **C5. Publicar.** Regenerar `public/data/` en `codex/datos` y subir a R2 en `v2/` (sin borrar `v1/`). Anotar abajo en «Entregado» los tamaños y cualquier nombre que cambie.
 - [ ] **C6. Compilar.** Cuando Claude marque A5, fusionar `codex/datos` → `claude/laboratorio-ios` (solo `public/data/` y `data/`), compilar Map Lab y dejarlo en el iPhone. Errores de compilación: arreglo mínimo con commit `Compilación: …`.
@@ -32,6 +32,7 @@
 | --- | --- | --- | --- |
 | Codex | C1 · jerarquía de calles y propiedades | `data/scripts/preparar.py`, `data/SOURCES.md` | Conserva `name` y `kind`; `CLASS=0` y `RAMP` permiten identificar rampas. `BRIDGE`/`TUNNEL` llegan nulos en la fuente consultada; `puente` también usa `F_ZLEV`/`T_ZLEV`; `tunel` queda false si no hay marca. `ref` se lee del nombre o alias documentados. |
 | Codex | C2 · polígonos de playas | `data/scripts/preparar.py`, `data/SOURCES.md` | Capa `playas`, `name` desde `Beachpoly_gdb`; minzoom 9. Fuente ofrece 19 polígonos nombrados. |
+| Codex | C3 · bandas de profundidad | `data/scripts/preparar.py`, `data/requirements.txt`, `data/SOURCES.md` | NOAA CRM Vol. 3 (2023), 1 segundo de arco; 1,767 polígonos simplificados en el recorte, GeoJSON 1,346,581 bytes. Tamaño final dentro de `base.pmtiles` se medirá en C5. |
 | | | | |
 
 ## Probar (el dueño, en el iPhone)
