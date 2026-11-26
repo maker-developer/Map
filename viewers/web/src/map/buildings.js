@@ -5,7 +5,10 @@ export function addBuildingLayers(map, visible = true) {
     type: 'vector',
     url: `pmtiles://${new URL('/data/edificios.pmtiles', location.origin).href}`,
   });
-  for (const layer of buildingLayers(themes.light)) map.addLayer(layer);
+  // Debajo de los nombres de municipios y encima de calles, rutas y paradas: los edificios
+  // tapan lo que queda detrás (como «Los edificios tapan» del app iOS).
+  const palette = themes[document.documentElement.dataset.theme] ?? themes.light;
+  for (const layer of buildingLayers(palette)) map.addLayer(layer, 'towns');
   map.setLayoutProperty('buildings-footprints', 'visibility', visible ? 'none' : 'visible');
   map.setLayoutProperty('buildings-volume', 'visibility', visible ? 'visible' : 'none');
 }

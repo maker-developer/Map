@@ -8,6 +8,7 @@ export function addTransitLayers(map) {
     type: 'vector',
     url: `pmtiles://${new URL('/data/transit.pmtiles', location.origin).href}`,
   });
+  // Rutas y paradas debajo de los edificios (que las tapan si quedan detrás) y de los municipios.
   map.addLayer({
     id: 'transit-routes',
     source: 'transit',
@@ -20,7 +21,7 @@ export function addTransitLayers(map) {
       'line-color': ['case', ['get', 'rail'], '#194d49', ['get', 'color']],
       'line-opacity': .68,
     },
-  });
+  }, 'towns');
   map.addLayer({
     id: 'transit-stops',
     source: 'transit',
@@ -33,7 +34,7 @@ export function addTransitLayers(map) {
       'circle-stroke-color': '#fffbef',
       'circle-stroke-width': 1.4,
     },
-  });
+  }, 'towns');
   map.on('click', 'transit-stops', event => showStop(event, map));
   map.on('mouseenter', 'transit-stops', () => { map.getCanvas().style.cursor = 'pointer'; });
   map.on('mouseleave', 'transit-stops', () => { map.getCanvas().style.cursor = ''; });

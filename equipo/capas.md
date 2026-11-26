@@ -6,7 +6,7 @@ Una capa que el estilo pide y todavía no existe no rompe el mapa: MapLibre simp
 
 ## Archivos
 
-| Archivo | En el repo (`public/data/`) | En la nube (R2 `v1/`) |
+| Archivo | En el repo (`public/data/`) | En la nube (R2 `v2/`, ronda 1) |
 | --- | --- | --- |
 | Mapa base | `base.pmtiles` | `base.pmtiles` |
 | Edificios | `edificios.pmtiles` | `buildings.pmtiles` |
@@ -21,7 +21,7 @@ Al regenerar, Codex sube a una carpeta nueva de R2 (`v2/`, `v3/`…) y no pisa l
 | Capa | Geometría | Propiedades | Zoom |
 | --- | --- | --- | --- |
 | `condado` | polígono | — | 7+ |
-| `calles` | línea | `name`, `kind` (campo CLASS del condado: `0`–`3` principales) | 8+ |
+| `calles` | línea | `name` (en MAYÚSCULAS), `kind` (campo CLASS del condado, ver tabla abajo) | 8+ |
 | `agua` | polígono | `name` | 7+ |
 | `parques` | polígono | `name` | 9+ |
 
@@ -40,14 +40,33 @@ Al regenerar, Codex sube a una carpeta nueva de R2 (`v2/`, `v3/`…) y no pisa l
 
 ## Pedido para la ronda 1 (Codex)
 
+### Qué es cada valor de `kind` (CLASS del condado)
+
+Comprobado por Claude leyendo `base.pmtiles` (Brickell, Downtown, Miami Beach, Miami Lakes, Coral Gables, Kendall):
+
+| `kind` | `clase` | Ejemplos |
+| --- | --- | --- |
+| `0` | `rampa` | I 95 RAMP, SR 826 RAMP, I 195 RAMP |
+| `1` | `autopista` | I 95 EXPY, SR 826 EXPY, SR 112, Gratigny Pkwy |
+| `2` | `principal` | Biscayne Blvd, Brickell Ave, SW 8th St, Alton Rd |
+| `3` | `avenida` | Ponce de León Blvd, NW 7th Ave, S Miami Ave |
+| `4` | `colectora` | Meridian Ave, NW 14th Ave |
+| `5` | `local` | Salzedo St, Galiano St |
+| `6`, `7`, `8` | `servicio` | callejones, privadas (Lenox Ct, Riverfront Aly) |
+| `9` | `peatonal` | Lincoln Rd |
+
+El estilo de la ronda 1 ya usa esta tabla a partir de `kind` mientras no llegue `clase`.
+
 ### `calles`: propiedades nuevas (se mantienen `name` y `kind`)
 
 | Propiedad | Valores | Notas |
 | --- | --- | --- |
-| `clase` | `autopista`, `rampa`, `avenida`, `colectora`, `local`, `servicio` | Traducción de CLASS del condado. Documentar la tabla CLASS → clase en `data/SOURCES.md`. |
+| `clase` | `autopista`, `rampa`, `principal`, `avenida`, `colectora`, `local`, `servicio`, `peatonal` | Según la tabla de arriba. Si algún CLASS no encaja, decirlo en la ronda. |
 | `puente` | `true`/`false` | Si el condado lo marca (o por cruce con agua). |
-| `tunel` | `true`/`false` | Si existe en la fuente. |
-| `ref` | p. ej. `I-95`, `US-1`, `SR-836`, `FL Turnpike` | Número de la vía, para escudos. Vacío si no tiene. |
+| `tunel` | `true`/`false` | Si existe en la fuente (p. ej. el túnel del puerto). |
+| `ref` | `I-95`, `I-195`, `US-1`, `US-41`, `SR-836`, `SR-112`, `Turnpike`… | Número de la vía, para los escudos. Se puede sacar del nombre («I 95 EXPY» → `I-95`). Vacío si no tiene. |
+| `red` | `I`, `US`, `SR`, `TP` | Tipo de escudo: interestatal, federal, estatal, Turnpike. Elige la imagen `escudo-<red>`. |
+| `name` | «SW 8th St», «Brickell Ave» | **Con mayúsculas y minúsculas**, no todo en mayúsculas (hoy viene «SW 8TH ST»). Puntos cardinales en mayúscula (NE, SW…) y ordinales en minúscula («8th»). |
 
 ### `playas` (capa nueva en `base.pmtiles`)
 

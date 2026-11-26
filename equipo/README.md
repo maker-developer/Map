@@ -8,7 +8,7 @@ Dos agentes trabajan en este repositorio al mismo tiempo, cada uno en su parte, 
 | --- | --- | --- |
 | Puede | Escribir estilo, Swift, JS y documentos. Revisar capturas. | Compilar con Xcode, instalar en el iPhone, descargar datos del condado y de NOAA, correr Tippecanoe, subir a R2. |
 | No puede | Compilar iOS. Descargar de los servidores del condado ni de R2 (la red de su sesión los bloquea). | — |
-| Es dueño de | **Diseño y app:** `styles/`, `viewers/ios/`, `viewers/web/src/map/`, `viewers/web/src/features/` | **Datos y publicación:** `data/`, `public/data/`, el bucket R2, `viewers/web/vite.config.js`, `package*.json` |
+| Es dueño de | **Diseño y app:** `styles/`, `viewers/ios/`, `viewers/web/src/` (incluido `main.js`), `viewers/web/index.html` | **Datos y publicación:** `data/`, `public/data/`, el bucket R2, `viewers/web/vite.config.js`, `package*.json` |
 | Compartido | `equipo/` (cada uno solo edita su sección y su línea del registro) | |
 
 Regla de oro: **nadie edita archivos del otro.** Si hace falta un cambio en la parte del otro, se pide en la sección «Pedidos» de la ronda.

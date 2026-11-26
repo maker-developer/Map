@@ -25,6 +25,8 @@ enum Lc: String {
     case memoria = "memory-stick"
     case monumento = "landmark"
     case brujula = "compass"
+    case buscar = "search"
+    case ajustes = "settings-2"
 
     var imagen: Image { Image("lc.\(rawValue)") }
 }

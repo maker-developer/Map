@@ -30,13 +30,26 @@ struct PantallaMapa: View {
                 .ignoresSafeArea()
             }
         }
+        .overlay(alignment: .top) {
+            if experimento.comparar {
+                Picker("Estilo", selection: $estilo.ronda1) {
+                    Text("Antes").tag(false)
+                    Text("Después").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 220)
+                .padding(4)
+                .vidrio(Capsule())
+                .padding(.top, 8)
+            }
+        }
         .overlay(alignment: .topLeading) {
             VStack(alignment: .leading, spacing: 8) {
                 if verMedidas { PanelMedidas(medidas: medidas, origen: estilo.origen.nombre) }
                 if let error = medidas.error { AvisoError(texto: error) }
             }
             .padding(.leading, 16)
-            .padding(.top, 8)
+            .padding(.top, experimento.comparar ? 60 : 8)
         }
         .overlay(alignment: .trailing) {
             controles
@@ -75,6 +88,7 @@ struct PantallaMapa: View {
         estilo.edificios3D = experimento.edificios3D
         estilo.edificiosTapan = experimento.edificiosTapan
         estilo.transporte = experimento.transporte
+        estilo.ronda1 = experimento.ronda1
         estilo.origen = (OrigenElegido(rawValue: origenMapas) ?? .app).origen(urlMac: urlMac)
         zona = experimento.zona
         verMedidas = experimento.medidas
@@ -99,6 +113,7 @@ struct PantallaMapa: View {
                 Toggle("Edificios en 3D", isOn: $estilo.edificios3D)
                 Toggle("Los edificios tapan", isOn: $estilo.edificiosTapan)
                 Toggle("Rutas y paradas", isOn: $estilo.transporte)
+                Toggle("Estilo de la ronda 1", isOn: $estilo.ronda1)
                 Picker("Inclinación", selection: $inclinacion) {
                     Text("Suave · 40°").tag(40.0)
                     Text("Media · 47°").tag(47.0)
@@ -169,7 +184,7 @@ private struct PanelMedidas: View {
 }
 
 /// Lo que se tocó en el mapa: edificio (dirección y altura) o parada (nombre y rutas).
-private struct FichaTocado: View {
+struct FichaTocado: View {
     let elemento: ElementoTocado
     let cerrar: () -> Void
 

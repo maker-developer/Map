@@ -18,6 +18,9 @@ struct EstiloMapa {
     var edificios3D = true
     var transporte = false
     var origen: OrigenDatos = .app
+    /// Estilo de la ronda 1 (calles con jerarquía, escudos, playas, profundidad y nombres del agua).
+    /// Apagado = el estilo anterior, para comparar «antes / después». Ver `EstiloRonda1.swift`.
+    var ronda1 = true
 
     // MARK: - Paletas (styles/base-light.js · styles/base-dark.js)
 
@@ -25,18 +28,42 @@ struct EstiloMapa {
         let background, land, park, parkOutline, water, waterOutline, boundary: String
         let street, mainStreet, mainStreetCasing, streetLabel, cityLabel, halo: String
         let building, buildingOutline, buildingLow, buildingMid, buildingHigh: String
+        /// Casas (menos de 12 m): un pastel distinto por edificio. Vacío = sin pasteles.
+        var casas: [String] = []
     }
 
+    /// Ronda 1: blanco cálido, agua celeste, parques verde fresco, torres grises y casas pastel.
     static let claro = Paleta(
-        background: "#d9e4df", land: "#f0eee4", park: "#cdddc5", parkOutline: "#b8cdb3",
-        water: "#a5cfd5", waterOutline: "#9ec7cb", boundary: "#798f87",
-        street: "#fdfbf4", mainStreet: "#fffaf0", mainStreetCasing: "#c0bbaa",
-        streetLabel: "#606760", cityLabel: "#243d36", halo: "#fbf8ef",
-        building: "#d6c8b7", buildingOutline: "#adab9e",
-        buildingLow: "#e2d1b8", buildingMid: "#adbbb1", buildingHigh: "#698f8b"
+        background: "#eceeec", land: "#f8f8f3", park: "#b4dd90", parkOutline: "#a2d27c",
+        water: "#9cd4f1", waterOutline: "#8cc8e8", boundary: "#9aa3a6",
+        street: "#ffffff", mainStreet: "#ffffff", mainStreetCasing: "#c9cbcb",
+        streetLabel: "#7d8486", cityLabel: "#3b4245", halo: "#f8f8f3",
+        building: "#e6e5e1", buildingOutline: "#cfcfcb",
+        buildingLow: "#e9e8e4", buildingMid: "#dcdddb", buildingHigh: "#d1d3d2",
+        casas: ["#f6e6e2", "#f6eadb", "#f5f0dc", "#d9e9e5", "#e5e1da", "#e4e5f0"]
     )
 
     static let oscuro = Paleta(
+        background: "#141618", land: "#1d2023", park: "#1f3a2a", parkOutline: "#27472f",
+        water: "#1f3d53", waterOutline: "#284b63", boundary: "#5c666b",
+        street: "#3a3e42", mainStreet: "#45494d", mainStreetCasing: "#16181a",
+        streetLabel: "#a7adb1", cityLabel: "#e3e6e8", halo: "#1d2023",
+        building: "#2e3135", buildingOutline: "#25282b",
+        buildingLow: "#34373b", buildingMid: "#3a3d42", buildingHigh: "#41454a",
+        casas: ["#3d3537", "#3c3732", "#3a3930", "#2f3c3a", "#37352f", "#343640"]
+    )
+
+    /// Los colores de antes de la ronda 1, para el «Antes» del experimento.
+    static let claroAntes = Paleta(
+        background: "#e6ece9", land: "#f5f3ed", park: "#d4e3d1", parkOutline: "#bdcfbb",
+        water: "#a8d1d6", waterOutline: "#94c3c9", boundary: "#798d87",
+        street: "#fffefa", mainStreet: "#fffefa", mainStreetCasing: "#cbc7bc",
+        streetLabel: "#535c59", cityLabel: "#253b36", halo: "#faf8f1",
+        building: "#c4c6bb", buildingOutline: "#9da39b",
+        buildingLow: "#d6cbbc", buildingMid: "#aab9b1", buildingHigh: "#778f88"
+    )
+
+    static let oscuroAntes = Paleta(
         background: "#161b1a", land: "#202625", park: "#26372f", parkOutline: "#364a40",
         water: "#203a40", waterOutline: "#31535a", boundary: "#657d75",
         street: "#343b38", mainStreet: "#454b46", mainStreetCasing: "#101514",
@@ -45,7 +72,14 @@ struct EstiloMapa {
         buildingLow: "#77776d", buildingMid: "#697b73", buildingHigh: "#4c706c"
     )
 
-    var paleta: Paleta { tema == .claro ? Self.claro : Self.oscuro }
+    var paleta: Paleta {
+        switch (tema, ronda1) {
+        case (.claro, true): Self.claro
+        case (.oscuro, true): Self.oscuro
+        case (.claro, false): Self.claroAntes
+        case (.oscuro, false): Self.oscuroAntes
+        }
+    }
 
     // MARK: - JSON
 
@@ -54,7 +88,7 @@ struct EstiloMapa {
         let datos = try JSONSerialization.data(withJSONObject: estilo(), options: [.sortedKeys])
         let carpeta = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         // Un nombre por combinación: MapLibre recarga al cambiar la URL.
-        let nombre = "estilo-\(tema.rawValue)-\(edificiosTapan ? "tapan" : "debajo")-\(origen.clave).json"
+        let nombre = "estilo-\(tema.rawValue)-\(edificiosTapan ? "tapan" : "debajo")-\(ronda1 ? "r1" : "r0")-\(origen.clave).json"
         let url = carpeta.appendingPathComponent(nombre)
         try datos.write(to: url, options: .atomic)
         return url
@@ -65,7 +99,9 @@ struct EstiloMapa {
             "version": 8,
             "name": "Map · \(tema.rawValue)",
             "glyphs": origen.urlGlifos,
-            "light": ["anchor": "map", "intensity": 0.45, "color": "#fff5e5", "position": [1.15, 210, 35]],
+            // Ronda 1: luz blanca neutra (las torres se ven grises); antes, cálida.
+            "light": ["anchor": "map", "intensity": ronda1 ? 0.38 : 0.45, "color": ronda1 ? "#ffffff" : "#fff5e5",
+                      "position": [1.15, 210, 35]],
             "sources": [
                 "base": ["type": "vector", "url": origen.urlPMTiles(.base)],
                 "buildings": ["type": "vector", "url": origen.urlPMTiles(.edificios)],
@@ -80,18 +116,20 @@ struct EstiloMapa {
 
     private func capas() -> [[String: Any]] {
         let p = paleta
-        let suelo = capasSuelo(p)
-        let nombresCalles = capaNombresCalles(p)
+        let suelo = ronda1 ? capasSueloRonda1(p, Self.paletaRonda1(tema)) : capasSuelo(p)
+        let nombresCalles = ronda1 ? capasNombresRonda1(p, Self.paletaRonda1(tema)) : [capaNombresCalles(p)]
         let rutas = capasTransporte()
         let edificios = capasEdificios(p)
         let pueblos = capaPueblos(p)
         // Con «edificios tapan», todo lo que va pegado al suelo (nombres de calles, rutas, paradas)
         // se dibuja antes que los edificios, y estos lo tapan cuando queda detrás.
         // Sin él, como en el visor web: los edificios primero y lo demás flotando encima.
+        // Los escudos siempre encima de todo (menos los municipios).
+        let escudos: [[String: Any]] = ronda1 ? [capaEscudosRonda1()] : []
         if edificiosTapan {
-            return suelo + [nombresCalles] + rutas + edificios + [pueblos]
+            return suelo + nombresCalles + rutas + edificios + escudos + [pueblos]
         } else {
-            return suelo + edificios + [nombresCalles] + rutas + [pueblos]
+            return suelo + edificios + nombresCalles + rutas + escudos + [pueblos]
         }
     }
 
@@ -139,13 +177,34 @@ struct EstiloMapa {
          "paint": ["text-color": p.cityLabel, "text-halo-color": p.halo, "text-halo-width": 1.8]]
     }
 
+    /// Uno de los pasteles de `p.casas` a partir de un número (altura o largo de la dirección).
+    private func pastel(_ p: Paleta, _ numero: [Any]) -> [Any] {
+        var expresion: [Any] = ["match", ["%", ["round", numero], p.casas.count]]
+        for (i, color) in p.casas.enumerated() { expresion.append(i); expresion.append(color) }
+        expresion.append(p.casas[0])
+        return expresion
+    }
+
     private func capasEdificios(_ p: Paleta) -> [[String: Any]] {
-        let color: [Any] = ["interpolate", ["linear"], ["coalesce", ["get", "height"], 0],
-                            0, p.buildingLow, 15, p.buildingLow, 46, p.buildingMid, 120, p.buildingHigh, 200, p.buildingHigh]
+        let altura: [Any] = ["coalesce", ["get", "height"], 0]
+        let torres: [Any] = p.casas.isEmpty
+            ? ["interpolate", ["linear"], altura,
+               0, p.buildingLow, 15, p.buildingLow, 46, p.buildingMid, 120, p.buildingHigh, 200, p.buildingHigh]
+            : ["interpolate", ["linear"], altura, 0, p.buildingLow, 20, p.buildingLow, 60, p.buildingMid, 150, p.buildingHigh]
+        // Torres en grises según la altura; casas (menos de 12 m) en uno de seis pasteles.
+        // El decimal de la altura elige el pastel: cada casa de un color distinto, pero siempre el mismo.
+        let color: [Any] = p.casas.isEmpty ? torres : ["case", ["<", altura, 12], pastel(p, ["*", altura, 10]), torres]
+        // Huellas sin altura (en planta): pastel según el largo de la dirección.
+        let colorHuella: Any
+        if p.casas.isEmpty {
+            colorHuella = p.building
+        } else {
+            colorHuella = pastel(p, ["length", ["coalesce", ["get", "address"], ""]])
+        }
         return [
             ["id": "buildings-footprints", "type": "fill", "source": "buildings", "source-layer": "edificios", "minzoom": 13,
              "layout": ["visibility": edificios3D ? "none" : "visible"],
-             "paint": ["fill-color": p.building, "fill-outline-color": p.buildingOutline]],
+             "paint": ["fill-color": colorHuella, "fill-outline-color": p.buildingOutline]],
             ["id": "buildings-volume", "type": "fill-extrusion", "source": "buildings", "source-layer": "edificios", "minzoom": 13,
              "filter": ["!=", ["get", "height"], NSNull()],
              "layout": ["visibility": edificios3D ? "visible" : "none"],

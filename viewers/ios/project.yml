@@ -33,7 +33,7 @@ targets:
     info:
       path: Laboratorio/Info.plist
       properties:
-        CFBundleDisplayName: Map Lab
+        CFBundleDisplayName: Map
         CFBundleDevelopmentRegion: es
         UILaunchScreen:
           UIColorName: AccentColor
@@ -43,7 +43,7 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         # Carpeta pública de las teselas en Cloudflare R2 (r2.dev es solo para desarrollo:
         # para producción, conectar un dominio propio al bucket y cambiar solo esta línea).
-        MapNubeURL: "https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/v1"
+        MapNubeURL: "https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/v2"
         NSLocationWhenInUseUsageDescription: "Map Lab usa tu ubicación para mostrarte dónde estás en el mapa."
         # Para probar teselas servidas desde la Mac en la misma Wi-Fi (npm run dev).
         NSAppTransportSecurity:

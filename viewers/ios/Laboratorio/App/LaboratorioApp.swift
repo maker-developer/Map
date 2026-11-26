@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// Map Lab: app de pruebas del mapa propio en un iPhone real.
-/// Cada experimento abre el mismo mapa con una configuración distinta, para comparar
-/// legibilidad, fluidez, memoria y tiempo de carga antes de llevar algo a otro proyecto.
+/// Map: un mapa normal de Miami-Dade (como Apple Maps) con el estilo propio.
+/// El modo laboratorio (ícono del matraz junto a la búsqueda) abre los experimentos de cada
+/// ronda para comparar legibilidad, fluidez, memoria y carga antes de pasarlos al mapa.
 @main
 struct LaboratorioApp: App {
     var body: some Scene {
         WindowGroup {
-            ListaExperimentos()
+            MapaPrincipal()
                 .tint(Color.accentColor)
         }
     }

@@ -15,11 +15,23 @@ struct Experimento: Identifiable, Hashable {
     let edificiosTapan: Bool
     let transporte: Bool
     let medidas: Bool
+    /// Arranca con el estilo de la ronda 1 (si no, el anterior).
+    var ronda1 = true
+    /// Enseña el interruptor «Antes / Después» arriba del mapa.
+    var comparar = false
 
     static func == (a: Self, b: Self) -> Bool { a.id == b.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 
     static let todos: [Experimento] = [
+        Experimento(
+            id: "ronda1", titulo: "Ronda 1 · Calles y agua",
+            detalle: "Jerarquía de calles, escudos, playas y la bahía por profundidad.",
+            mirar: "Usa «Antes / Después» arriba. Mira el condado (autopistas), Brickell (puentes y rampas), Miami Beach (arena) y la bahía (profundidad y nombres del agua). La lista completa está en equipo/ronda-01.md.",
+            icono: .ruta, color: .pink, zona: .condado, tema: .claro,
+            edificios3D: true, edificiosTapan: true, transporte: false, medidas: true,
+            ronda1: true, comparar: true
+        ),
         Experimento(
             id: "base", titulo: "Mapa base", detalle: "Calles, agua, parques y nombres de todo el condado.",
             mirar: "Que cargue rápido, que los nombres se lean y que acercar y alejar vaya fluido.",
@@ -84,6 +96,8 @@ enum OrigenElegido: String, CaseIterable, Identifiable {
 /// Inicio: la lista de experimentos, como Ajustes.
 struct ListaExperimentos: View {
     @AppStorage("origenMapas") private var origen = OrigenElegido.app.rawValue
+    /// Al abrirse desde el mapa principal: vuelve al mapa.
+    var alCerrar: (() -> Void)? = nil
 
     var body: some View {
         NavigationStack {
@@ -118,7 +132,17 @@ struct ListaExperimentos: View {
                     Text("Dentro del app funciona sin internet. En la nube baja solo la parte de cada zona. Desde la Mac sirve para probar teselas nuevas sin compilar.")
                 }
             }
-            .navigationTitle("Map Lab")
+            .navigationTitle("Laboratorio")
+            .toolbar {
+                if let alCerrar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(action: alCerrar) {
+                            Icono(.cerrar, tamano: 18)
+                        }
+                        .accessibilityLabel("Volver al mapa")
+                    }
+                }
+            }
             .navigationDestination(for: Experimento.self) { experimento in
                 PantallaMapa(experimento: experimento)
             }
