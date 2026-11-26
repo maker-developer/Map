@@ -137,16 +137,37 @@ extension MapaMapLibre.Coordinador {
     /// Cámara según la fase: al navegar, te sigue inclinada en tu sentido de marcha.
     func aplicarFase(en mapa: MLNMapView) {
         guard let navegador = padre.navegador else { return }
-        if navegador.fase == .navegando {
-            mapa.setUserTrackingMode(.followWithCourse, animated: true) {
-                let camara = mapa.camera
-                camara.pitch = 55
-                mapa.setCamera(camara, withDuration: 0.6, animationTimingFunction: nil)
-            }
-            if mapa.zoomLevel < 16 { mapa.setZoomLevel(17, animated: true) }
+        // El indicador de ubicación de MapLibre ya se desliza entre posiciones (máxima precisión por defecto).
+        let navegando = navegador.fase == .navegando
+        mapa.showsUserHeadingIndicator = navegando
+
+        if navegando {
+            seguir(en: mapa)
         } else if mapa.userTrackingMode != .none {
             mapa.setUserTrackingMode(.none, animated: true, completionHandler: nil)
         }
+    }
+
+    /// La cámara te sigue inclinada, en tu sentido de marcha, al zoom que pide la velocidad.
+    func seguir(en mapa: MLNMapView) {
+        guard let navegador = padre.navegador else { return }
+        ignorarCambioDeSeguimiento = true
+        mapa.setUserTrackingMode(.followWithCourse, animated: true) { [weak self] in
+            self?.ignorarCambioDeSeguimiento = false
+            let camara = mapa.camera
+            camara.pitch = 55
+            mapa.setCamera(camara, withDuration: 0.6, animationTimingFunction: CAMediaTimingFunction(name: .easeInEaseOut))
+        }
+        mapa.setZoomLevel(navegador.zoomNavegacion, animated: true)
+        zoomAplicado = navegador.zoomNavegacion
+    }
+
+    /// El zoom acompaña a la velocidad, con transiciones suaves (solo si cambia lo suficiente).
+    func ajustarZoom(en mapa: MLNMapView) {
+        guard let navegador = padre.navegador, navegador.fase == .navegando, navegador.siguiendo,
+              abs(navegador.zoomNavegacion - zoomAplicado) >= 0.3 else { return }
+        zoomAplicado = navegador.zoomNavegacion
+        mapa.setZoomLevel(navegador.zoomNavegacion, animated: true)
     }
 
     /// Mantener pulsado: pin y ficha de ese punto (como Apple Maps).

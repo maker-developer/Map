@@ -96,11 +96,21 @@ enum ServiciosRuta {
                         let location: [Double]
                         let exit: Int?
                     }
+                    struct I: Decodable {
+                        struct L: Decodable {
+                            let indications: [String]
+                            let valid: Bool
+                        }
+                        let lanes: [L]?
+                    }
                     let distance: Double
                     let duration: Double
                     let name: String?
                     let ref: String?
+                    let exits: String?
+                    let destinations: String?
                     let maneuver: M
+                    let intersections: [I]?
                 }
                 let summary: String?
                 let steps: [P]
@@ -139,13 +149,20 @@ enum ServiciosRuta {
             for tramo in ruta.legs {
                 for p in tramo.steps {
                     let calle = Texto.bonito([p.ref, p.name].compactMap { $0?.isEmpty == false ? $0 : nil }.first ?? "")
+                    let destinos = p.destinations.map { Texto.bonito($0) }
                     let (texto, icono) = Maniobra.describir(tipo: p.maneuver.type, modificador: p.maneuver.modifier,
-                                                            calle: calle, salida: p.maneuver.exit)
+                                                            calle: calle, salida: p.maneuver.exit,
+                                                            numeroSalida: p.exits, destinos: destinos)
+                    // Carriles de la maniobra: los del primer cruce del paso (donde se hace el giro).
+                    let carriles = (p.intersections?.first?.lanes ?? []).enumerated().map { i, l in
+                        Carril(id: i, indicaciones: l.indications, valido: l.valid)
+                    }
                     let lugar = p.maneuver.location.count == 2
                         ? CLLocationCoordinate2D(latitude: p.maneuver.location[1], longitude: p.maneuver.location[0])
                         : destino
                     pasos.append(Paso(id: pasos.count, instruccion: texto, calle: calle,
-                                      distancia: p.distance, duracion: p.duration, icono: icono, ubicacion: lugar))
+                                      distancia: p.distance, duracion: p.duration, icono: icono, ubicacion: lugar,
+                                      carriles: carriles, salida: p.exits, destinos: destinos))
                 }
             }
             let resumen = ruta.legs.compactMap(\.summary).filter { !$0.isEmpty }.joined(separator: ", ")

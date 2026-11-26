@@ -17,6 +17,8 @@ struct HojaBusqueda: View {
 
     private var recogida: Bool { hoja == .height(Self.alturaMinima) }
     @State private var verLaboratorio = false
+    /// «Casa» o «Trabajo» sin guardar: se explica cómo añadirlo.
+    @State private var pistaAnadir: String?
     @FocusState private var escribiendo: Bool
 
     var body: some View {
@@ -33,6 +35,10 @@ struct HojaBusqueda: View {
                             withAnimation(.snappy) { self.tocado = nil }
                             hoja = .height(Self.alturaMinima)
                         }
+                    }
+                    if consulta.isEmpty {
+                        accesos
+                        if !navegador.favoritos.recientes.isEmpty { recientes }
                     }
                     lugares
                     explorar
@@ -111,6 +117,103 @@ struct HojaBusqueda: View {
         let texto = consulta.trimmingCharacters(in: .whitespaces)
         guard !texto.isEmpty else { return lista }
         return lista.filter { $0.nombre.localizedStandardContains(texto) }
+    }
+
+    // MARK: - Casa, Trabajo, guardados y recientes
+
+    /// «Ir a casa» y «Ir al trabajo» con un toque (directo a la ruta), y los guardados.
+    private var accesos: some View {
+        let favoritos = navegador.favoritos
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                acceso(icono: .casa, color: .blue, titulo: "Casa", detalle: favoritos.casa.map { _ in "Ir" } ?? "Añadir",
+                       lugar: favoritos.casa?.lugar)
+                acceso(icono: .trabajo, color: .brown, titulo: "Trabajo", detalle: favoritos.trabajo.map { _ in "Ir" } ?? "Añadir",
+                       lugar: favoritos.trabajo?.lugar)
+                ForEach(Array(favoritos.guardados.prefix(8).enumerated()), id: \.offset) { _, guardado in
+                    acceso(icono: .guardado, color: .orange, titulo: guardado.nombre, detalle: guardado.subtitulo,
+                           lugar: guardado.lugar, directo: false)
+                }
+            }
+            .padding(.horizontal, 2)
+        }
+        .scrollClipDisabled()
+        .sensoryFeedback(.selection, trigger: pistaAnadir)
+        .alert("Añadir \(pistaAnadir?.lowercased() ?? "")", isPresented: Binding(get: { pistaAnadir != nil }, set: { if !$0 { pistaAnadir = nil } })) {
+            Button("Entendido", role: .cancel) { pistaAnadir = nil }
+        } message: {
+            Text("Busca el lugar o mantén pulsado el mapa, y en su ficha toca «Más» › «Guardar como \(pistaAnadir ?? "")».")
+        }
+    }
+
+    /// Un acceso: con lugar, «Ir» lleva directo a la ruta; sin lugar, explica cómo añadirlo.
+    private func acceso(icono: Lc, color: Color, titulo: String, detalle: String, lugar: Lugar?, directo: Bool = true) -> some View {
+        Button {
+            escribiendo = false
+            if let lugar {
+                if directo { navegador.irA(lugar) } else { navegador.elegir(lugar) }
+            } else {
+                pistaAnadir = titulo
+            }
+        } label: {
+            VStack(spacing: 6) {
+                Icono(icono, tamano: 20)
+                    .foregroundStyle(.white)
+                    .frame(width: 48, height: 48)
+                    .background(color.gradient, in: Circle())
+                Text(titulo)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text(detalle)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(width: 76)
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Los últimos sitios elegidos: un toque y sale su ficha otra vez.
+    private var recientes: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Recientes")
+                    .font(.title3.weight(.semibold))
+                Spacer()
+                Button("Borrar") { navegador.favoritos.borrarRecientes() }
+                    .font(.subheadline)
+            }
+            .padding(.horizontal, 4)
+            VStack(spacing: 0) {
+                let lista = Array(navegador.favoritos.recientes.prefix(5).enumerated())
+                ForEach(lista, id: \.offset) { indice, reciente in
+                    Button {
+                        escribiendo = false
+                        navegador.elegir(reciente.lugar)
+                    } label: {
+                        HStack(spacing: 12) {
+                            IconoCuadro(icono: .recientes, color: .gray)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(reciente.nombre).foregroundStyle(.primary).lineLimit(1)
+                                if !reciente.subtitulo.isEmpty {
+                                    Text(reciente.subtitulo).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+                                }
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if indice < lista.count - 1 { Divider().padding(.leading, 58) }
+                }
+            }
+            .background(Color(uiColor: .secondarySystemGroupedBackground),
+                        in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
     }
 
     /// Lugares encontrados (direcciones, sitios): al tocar uno sale su ficha con «Cómo llegar».

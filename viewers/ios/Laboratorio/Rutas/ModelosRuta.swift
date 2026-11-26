@@ -48,6 +48,24 @@ enum ModoRuta: String, CaseIterable, Identifiable {
     }
 }
 
+/// Un carril en una maniobra: hacia dónde va y si sirve para la ruta.
+struct Carril: Identifiable {
+    let id: Int
+    let indicaciones: [String]
+    let valido: Bool
+
+    var icono: Lc {
+        switch indicaciones.first ?? "straight" {
+        case "left", "sharp left": .giroIzquierda
+        case "slight left": .diagonalIzquierda
+        case "right", "sharp right": .giroDerecha
+        case "slight right": .diagonalDerecha
+        case "uturn": .vuelta
+        default: .flechaArriba
+        }
+    }
+}
+
 /// Un paso de la ruta: «Gira a la derecha en SW 8th St».
 struct Paso: Identifiable {
     let id: Int
@@ -59,6 +77,11 @@ struct Paso: Identifiable {
     let icono: Lc
     /// Dónde está la maniobra.
     let ubicacion: CLLocationCoordinate2D
+    /// Carriles en la maniobra (vacío si el dato no los trae).
+    var carriles: [Carril] = []
+    /// Número de salida («4») y hacia dónde («I-95 North: Downtown»), si los hay.
+    var salida: String? = nil
+    var destinos: String? = nil
 }
 
 /// Una ruta posible entre origen y destino.
@@ -102,9 +125,13 @@ enum FormatoRuta {
 
 enum Maniobra {
     /// Instrucción y flecha Lucide para un paso de OSRM (`maneuver.type`, `maneuver.modifier`).
-    static func describir(tipo: String, modificador: String?, calle: String, salida: Int?) -> (String, Lc) {
+    static func describir(tipo: String, modificador: String?, calle: String, salida: Int?,
+                          numeroSalida: String? = nil, destinos: String? = nil) -> (String, Lc) {
         let en = calle.isEmpty ? "" : " en \(calle)"
-        let hacia = calle.isEmpty ? "" : " hacia \(calle)"
+        // En rampas y bifurcaciones manda el cartel («hacia Downtown»), si lo hay.
+        let rumbo = destinos.flatMap { $0.isEmpty ? nil : $0 } ?? calle
+        let hacia = rumbo.isEmpty ? "" : " hacia \(rumbo)"
+        let numero = numeroSalida.flatMap { $0.isEmpty ? nil : " \($0)" } ?? ""
         let por = calle.isEmpty ? "" : " por \(calle)"
         let (giro, icono) = giro(modificador)
 
@@ -128,13 +155,13 @@ enum Maniobra {
         case "on ramp":
             return ("Toma la rampa\(hacia)", icono == .flechaArriba ? .diagonalDerecha : icono)
         case "off ramp":
-            return ("Toma la salida\(hacia)", icono == .flechaArriba ? .diagonalDerecha : icono)
+            return ("Toma la salida\(numero)\(hacia)", icono == .flechaArriba ? .diagonalDerecha : icono)
         case "fork":
             let lado = (modificador ?? "").contains("left") ? "izquierda" : "derecha"
             return ("Mantente a la \(lado)\(hacia)", lado == "izquierda" ? .diagonalIzquierda : .diagonalDerecha)
         case "roundabout", "rotary", "roundabout turn":
-            let numero = salida.map { "\($0).ª " } ?? ""
-            return ("En la rotonda, toma la \(numero)salida\(hacia)", .rotonda)
+            let ordinal = salida.map { "\($0).ª " } ?? ""
+            return ("En la rotonda, toma la \(ordinal)salida\(hacia)", .rotonda)
         case "exit roundabout", "exit rotary":
             return ("Sal de la rotonda\(hacia)", .diagonalDerecha)
         default:

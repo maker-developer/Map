@@ -45,6 +45,15 @@ enum Lc: String {
     case invertir = "arrow-up-down"
     case vozSi = "volume-2"
     case vozNo = "volume-x"
+    case compartir = "share"
+    case guardar = "bookmark"
+    case guardado = "bookmark-check"
+    case copiar = "copy"
+    case abrirFuera = "external-link"
+    case casa = "house"
+    case trabajo = "briefcase"
+    case recientes = "clock"
+    case listaPasos = "list-ordered"
 
     var imagen: Image { Image("lc.\(rawValue)") }
 }

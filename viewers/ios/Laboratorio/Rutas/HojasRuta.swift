@@ -1,15 +1,20 @@
 import SwiftUI
 import CoreLocation
+import UIKit
 
 // MARK: - Ficha del lugar
 
 /// Ficha de un sitio (resultado de búsqueda o pin): nombre, dirección y «Cómo llegar» con su tiempo,
-/// como la de Apple Maps.
+/// y acciones como en Apple Maps: guardar, compartir, copiar la dirección, abrir en otras apps
+/// y guardarlo como Casa o Trabajo.
 struct HojaLugar: View {
     let navegador: Navegador
+    @Environment(\.openURL) private var abrirURL
+    @State private var copiado = false
 
     var body: some View {
         if let lugar = navegador.destino {
+            let favoritos = navegador.favoritos
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -56,6 +61,43 @@ struct HojaLugar: View {
                     }
                 }
 
+                // Acciones: guardar, compartir, copiar, abrir en… y más.
+                HStack(spacing: 10) {
+                    let guardado = favoritos.esGuardado(lugar)
+                    Accion(icono: guardado ? .guardado : .guardar, titulo: guardado ? "Guardado" : "Guardar") {
+                        favoritos.alternarGuardado(lugar)
+                    }
+                    .sensoryFeedback(.success, trigger: guardado)
+
+                    ShareLink(item: Self.enlace(lugar), subject: Text(lugar.nombre),
+                              message: Text([lugar.nombre, lugar.subtitulo].filter { !$0.isEmpty }.joined(separator: "\n"))) {
+                        AccionEtiqueta(icono: .compartir, titulo: "Compartir")
+                    }
+                    .buttonStyle(.plain)
+
+                    Accion(icono: .copiar, titulo: copiado ? "Copiado" : "Copiar") {
+                        UIPasteboard.general.string = [lugar.nombre, lugar.subtitulo].filter { !$0.isEmpty }.joined(separator: ", ")
+                        copiado = true
+                        Task { try? await Task.sleep(for: .seconds(1.5)); copiado = false }
+                    }
+                    .sensoryFeedback(.success, trigger: copiado)
+
+                    Menu {
+                        Button("Apple Maps") { abrirURL(Self.enlace(lugar)) }
+                        Button("Google Maps") {
+                            abrirURL(URL(string: "https://www.google.com/maps/search/?api=1&query=\(lugar.coordenada.latitude),\(lugar.coordenada.longitude)")!)
+                        }
+                        Button("Waze") {
+                            abrirURL(URL(string: "https://waze.com/ul?ll=\(lugar.coordenada.latitude),\(lugar.coordenada.longitude)&navigate=yes")!)
+                        }
+                        Divider()
+                        Button("Guardar como Casa") { favoritos.ponerCasa(lugar) }
+                        Button("Guardar como Trabajo") { favoritos.ponerTrabajo(lugar) }
+                    } label: {
+                        AccionEtiqueta(icono: .abrirFuera, titulo: "Más")
+                    }
+                }
+
                 if let error = navegador.error {
                     Text(error).font(.footnote).foregroundStyle(.secondary)
                 }
@@ -64,6 +106,45 @@ struct HojaLugar: View {
             .padding(.top, 22)
             .frame(maxHeight: .infinity, alignment: .top)
         }
+    }
+
+    /// Enlace universal del lugar (abre Apple Maps; en otros teléfonos, la web de Apple Maps).
+    static func enlace(_ lugar: Lugar) -> URL {
+        var c = URLComponents(string: "https://maps.apple.com/")!
+        c.queryItems = [URLQueryItem(name: "ll", value: "\(lugar.coordenada.latitude),\(lugar.coordenada.longitude)"),
+                        URLQueryItem(name: "q", value: lugar.nombre)]
+        return c.url!
+    }
+}
+
+/// Botón de acción de la ficha (ícono arriba, texto abajo).
+private struct Accion: View {
+    let icono: Lc
+    let titulo: String
+    let accion: () -> Void
+
+    var body: some View {
+        Button(action: accion) { AccionEtiqueta(icono: icono, titulo: titulo) }
+            .buttonStyle(.plain)
+    }
+}
+
+private struct AccionEtiqueta: View {
+    let icono: Lc
+    let titulo: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Icono(icono, tamano: 19)
+            Text(titulo)
+                .font(.caption.weight(.medium))
+                .lineLimit(1)
+        }
+        .foregroundStyle(Color.blue)
+        .frame(maxWidth: .infinity, minHeight: 56)
+        .background(Color(uiColor: .secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(Rectangle())
     }
 }
 
@@ -277,13 +358,15 @@ struct ListaPasos: View {
 
 // MARK: - Navegando
 
-/// Banner de arriba: la flecha grande, la distancia a la maniobra y la calle (como Apple y Google).
+/// Banner de arriba: la flecha grande, la distancia a la maniobra y la calle (como Apple y Google),
+/// los carriles que sirven y, al tocarlo, la vista previa de los próximos pasos.
 struct BannerManiobra: View {
     let navegador: Navegador
+    @State private var verPrevia = false
 
     var body: some View {
         let paso = navegador.pasoSiguiente
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 14) {
                 Icono(navegador.llegaste ? .bandera : (paso?.icono ?? .flechaArriba), tamano: 40)
                     .foregroundStyle(.white)
@@ -296,8 +379,9 @@ struct BannerManiobra: View {
                             Text(FormatoRuta.distancia(distancia))
                                 .font(.title.weight(.bold))
                                 .monospacedDigit()
+                                .contentTransition(.numericText(countsDown: true))
                         }
-                        Text(paso.map { $0.calle.isEmpty ? $0.instruccion : $0.calle } ?? "Sigue la ruta")
+                        Text(paso.map { titulo($0) } ?? "Sigue la ruta")
                             .font(.title3.weight(.semibold))
                             .lineLimit(2)
                     }
@@ -305,41 +389,102 @@ struct BannerManiobra: View {
                 .foregroundStyle(.white)
                 Spacer(minLength: 0)
             }
-            // La que viene después, en pequeño: «Luego, gira a la izquierda».
-            if !navegador.llegaste, let ruta = navegador.rutaElegida,
-               ruta.pasos.indices.contains(navegador.pasoActual + 2) {
-                let luego = ruta.pasos[navegador.pasoActual + 2]
+
+            // Carriles: los que sirven en blanco, los demás apagados.
+            if !navegador.llegaste, let paso, paso.carriles.count > 1 {
                 HStack(spacing: 6) {
-                    Text("Luego")
-                    Icono(luego.icono, tamano: 14)
+                    ForEach(paso.carriles) { carril in
+                        Icono(carril.icono, tamano: 22)
+                            .foregroundStyle(carril.valido ? Color.white : Color.white.opacity(0.3))
+                            .frame(width: 34, height: 34)
+                            .background(carril.valido ? Color.white.opacity(0.16) : Color.clear,
+                                        in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.85))
+                .accessibilityLabel("Carriles: \(paso.carriles.filter(\.valido).count) de \(paso.carriles.count) sirven")
+            }
+
+            // La que viene después, en pequeño, o la vista previa de los próximos pasos.
+            if !navegador.llegaste, let ruta = navegador.rutaElegida {
+                if verPrevia {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(ruta.pasos.dropFirst(navegador.pasoActual + 2).prefix(3)) { siguiente in
+                            HStack(spacing: 10) {
+                                Icono(siguiente.icono, tamano: 16)
+                                Text(siguiente.instruccion).lineLimit(1)
+                                Spacer(minLength: 0)
+                                Text(FormatoRuta.distancia(siguiente.distancia)).monospacedDigit()
+                            }
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.9))
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                } else if ruta.pasos.indices.contains(navegador.pasoActual + 2) {
+                    let luego = ruta.pasos[navegador.pasoActual + 2]
+                    HStack(spacing: 6) {
+                        Text("Luego")
+                        Icono(luego.icono, tamano: 14)
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+                }
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(red: 0.11, green: 0.36, blue: 0.27), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .padding(.horizontal, 12)
+        .contentShape(Rectangle())
+        .onTapGesture { withAnimation(.snappy) { verPrevia.toggle() } }
+        .animation(.snappy, value: navegador.pasoActual)
+        .sensoryFeedback(.impact(weight: .light), trigger: navegador.pasoActual)
         .accessibilityElement(children: .combine)
+        .accessibilityHint("Toca para ver los próximos pasos")
+    }
+
+    /// En salidas y rampas, el cartel («Salida 4 · Downtown»); si no, la calle o la instrucción.
+    private func titulo(_ paso: Paso) -> String {
+        if let destinos = paso.destinos, !destinos.isEmpty {
+            return [paso.salida.map { "Salida \($0)" }, destinos].compactMap { $0 }.joined(separator: " · ")
+        }
+        return paso.calle.isEmpty ? paso.instruccion : paso.calle
     }
 }
 
 /// Barra de abajo al navegar: llegada, minutos y distancia que faltan, voz y «Finalizar».
+/// Al llegar, la pantalla de llegada: el destino, la hora y «Volver».
 struct HojaNavegacion: View {
     let navegador: Navegador
 
     var body: some View {
+        Group {
+            if navegador.llegaste {
+                llegada
+            } else {
+                enCamino
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 22)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .animation(.snappy, value: navegador.llegaste)
+        .sensoryFeedback(.success, trigger: navegador.llegaste)
+    }
+
+    private var enCamino: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 if let restante = navegador.restante {
                     Text(FormatoRuta.hora(Date().addingTimeInterval(restante.duracion)))
                         .font(.title2.weight(.bold))
                         .monospacedDigit()
+                        .contentTransition(.numericText())
                     Text("\(FormatoRuta.duracion(restante.duracion)) · \(FormatoRuta.distancia(restante.distancia))")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
+                        .contentTransition(.numericText(countsDown: true))
                 } else {
                     Text("Calculando…").font(.headline)
                 }
@@ -354,6 +499,7 @@ struct HojaNavegacion: View {
             }
             .buttonStyle(.plain)
             .vidrio(Circle(), interactivo: true)
+            .sensoryFeedback(.selection, trigger: navegador.voz)
             .accessibilityLabel(navegador.voz ? "Silenciar voz" : "Activar voz")
 
             Button("Finalizar") { navegador.finalizar() }
@@ -363,9 +509,31 @@ struct HojaNavegacion: View {
                 .tint(.red)
                 .controlSize(.large)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 22)
-        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private var llegada: some View {
+        HStack(spacing: 14) {
+            Icono(.bandera, tamano: 26)
+                .foregroundStyle(.white)
+                .frame(width: 52, height: 52)
+                .background(Color.green, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(navegador.destino?.nombre ?? "Has llegado")
+                    .font(.headline)
+                    .lineLimit(1)
+                Text("Llegaste a las \(FormatoRuta.hora(navegador.horaLlegada ?? Date()))")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            Button("Volver") { navegador.cerrar() }
+                .font(.headline)
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                .tint(.blue)
+                .controlSize(.large)
+        }
+        .transition(.opacity.combined(with: .scale(scale: 0.96)))
     }
 }
 

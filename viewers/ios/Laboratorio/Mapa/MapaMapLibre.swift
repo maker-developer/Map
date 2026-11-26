@@ -224,6 +224,12 @@ struct MapaMapLibre: UIViewRepresentable {
                 c.versionEncuadre = navegador.versionEncuadre
                 c.encuadrar(en: mapa)
             }
+            // «Volver a centrar» y zoom según la velocidad.
+            if navegador.versionCentrar != c.versionCentrar {
+                c.versionCentrar = navegador.versionCentrar
+                if navegador.fase == .navegando { c.seguir(en: mapa) }
+            }
+            c.ajustarZoom(en: mapa)
         }
 
         if centrarEnMi != c.centrarEnMi {
@@ -249,6 +255,10 @@ struct MapaMapLibre: UIViewRepresentable {
         var faseVista: Navegador.Fase = .libre
         var pin: MLNPointAnnotation?
         var pinDestinoID: UUID?
+        var versionCentrar = 0
+        var zoomAplicado: Double = 0
+        /// Mientras el propio app cambia el seguimiento, no cuenta como «el usuario movió el mapa».
+        var ignorarCambioDeSeguimiento = false
 
         init(_ padre: MapaMapLibre) {
             self.vista3D = padre.vista3D
@@ -344,6 +354,12 @@ struct MapaMapLibre: UIViewRepresentable {
 
         func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {
             padre.navegador?.actualizar(ubicacion: userLocation?.location)
+        }
+
+        /// Si el usuario mueve el mapa con el dedo, MapLibre deja de seguir: se avisa para «Volver a centrar».
+        func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
+            guard mode == .none, !ignorarCambioDeSeguimiento else { return }
+            padre.navegador?.dejarDeSeguir()
         }
 
         func mapViewDidFailLoadingMap(_ mapView: MLNMapView, withError error: Error) {

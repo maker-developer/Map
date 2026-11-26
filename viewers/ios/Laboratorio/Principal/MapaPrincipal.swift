@@ -69,7 +69,32 @@ struct MapaPrincipal: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        // Navegando y con el mapa movido a mano: «Volver a centrar», como Apple y Google.
+        .overlay(alignment: .bottomLeading) {
+            if navegador.fase == .navegando, !navegador.siguiendo {
+                Button {
+                    navegador.recentrar()
+                } label: {
+                    HStack(spacing: 8) {
+                        Icono(.navegar, tamano: 17)
+                        Text("Volver a centrar")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .foregroundStyle(Color.blue)
+                    .padding(.horizontal, 16)
+                    .frame(height: 46)
+                    .vidrio(Capsule(), interactivo: true)
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 16)
+                .padding(.bottom, 150)
+                .transition(.scale(scale: 0.8).combined(with: .opacity))
+            }
+        }
         .animation(.snappy, value: navegador.fase)
+        .animation(.snappy, value: navegador.siguiendo)
+        .sensoryFeedback(.selection, trigger: navegador.elegida)
+        .sensoryFeedback(.selection, trigger: navegador.modo)
         .overlay(alignment: .top) {
             if let error = medidas.error {
                 Text(error)
@@ -102,6 +127,9 @@ struct MapaPrincipal: View {
                     HojaNavegacion(navegador: navegador)
                 }
             }
+            // Cambio suave entre búsqueda, ficha, ruta y navegación.
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+            .animation(.spring(response: 0.38, dampingFraction: 0.86), value: navegador.fase)
             .presentationDetents(alturas, selection: $hoja)
             .presentationDragIndicator(.visible)
             .presentationBackgroundInteraction(.enabled(upThrough: .medium))

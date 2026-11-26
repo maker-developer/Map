@@ -35,7 +35,18 @@ final class Navegador {
     private(set) var distanciaAlPaso: CLLocationDistance?
     private(set) var restante: (distancia: CLLocationDistance, duracion: TimeInterval)?
     private(set) var llegaste = false
+    /// Hora a la que llegaste (para la pantalla de llegada).
+    private(set) var horaLlegada: Date?
     var voz = true
+    /// La cámara te sigue. Si mueves el mapa con el dedo deja de seguirte y aparece «Volver a centrar».
+    private(set) var siguiendo = true
+    /// Zoom que pide la navegación según la velocidad y la cercanía al giro.
+    private(set) var zoomNavegacion: Double = 17
+    /// Sube al pedir «Volver a centrar».
+    private(set) var versionCentrar = 0
+
+    /// Casa, Trabajo, guardados y recientes.
+    let favoritos = Favoritos()
 
     /// Suben para que el mapa redibuje las rutas o encuadre (el mapa compara con lo último que vio).
     private(set) var versionRutas = 0
@@ -45,6 +56,10 @@ final class Navegador {
     private var rutasPorModo: [ModoRuta: [Ruta]] = [:]
     private var fueraDeRuta = 0
     private var anunciado: Set<Int> = []
+    /// Último cálculo de progreso: como mucho uno por segundo, para que no se trabe.
+    private var ultimoProgreso = Date.distantPast
+    /// Vértice del trazado más cercano la última vez: se busca solo alrededor de él.
+    private var indiceTrazado = 0
     private let hablador = AVSpeechSynthesizer()
 
     var rutaElegida: Ruta? { rutas.indices.contains(elegida) ? rutas[elegida] : nil }
@@ -71,6 +86,7 @@ final class Navegador {
     // MARK: - Lugar
 
     func elegir(_ lugar: Lugar) {
+        favoritos.registrar(lugar)
         destino = lugar
         origen = nil
         rutas = []
@@ -91,6 +107,8 @@ final class Navegador {
                   destino?.coordenada.longitude == coordenada.longitude else { return }
             destino?.nombre = lugar.nombre
             destino?.subtitulo = lugar.subtitulo
+            // Recientes con el nombre real (sustituye al «Punto en el mapa» provisional).
+            if let destino { favoritos.registrar(destino) }
         }
     }
 
@@ -187,16 +205,42 @@ final class Navegador {
         fase = .navegando
         pasoActual = 0
         llegaste = false
+        horaLlegada = nil
         anunciado = []
         fueraDeRuta = 0
+        indiceTrazado = 0
+        siguiendo = true
+        ultimoProgreso = .distantPast
         actualizarProgreso()
         if let paso = rutaElegida?.pasos.first { decir(paso.instruccion) }
     }
 
     func finalizar() {
         hablador.stopSpeaking(at: .immediate)
-        fase = .ruta
-        versionEncuadre += 1
+        if llegaste {
+            cerrar()
+        } else {
+            fase = .ruta
+            versionEncuadre += 1
+        }
+    }
+
+    /// El usuario movió el mapa con el dedo: se deja de seguir.
+    func dejarDeSeguir() {
+        guard fase == .navegando, siguiendo else { return }
+        siguiendo = false
+    }
+
+    /// «Volver a centrar»: la cámara vuelve a seguirte.
+    func recentrar() {
+        siguiendo = true
+        versionCentrar += 1
+    }
+
+    /// «Ir a casa» / «Ir al trabajo» con un toque: directo a la pantalla de ruta.
+    func irA(_ lugar: Lugar) {
+        elegir(lugar)
+        comoLlegar()
     }
 
     /// Cierra todo y vuelve al mapa libre.
@@ -216,11 +260,14 @@ final class Navegador {
     func actualizar(ubicacion nueva: CLLocation?) {
         guard let nueva, nueva.horizontalAccuracy >= 0 else { return }
         ubicacion = nueva
-        if fase == .navegando { actualizarProgreso() }
+        // Como mucho un cálculo por segundo: suficiente para la voz y el banner, y no se traba.
+        guard fase == .navegando, Date().timeIntervalSince(ultimoProgreso) >= 1 else { return }
+        actualizarProgreso()
     }
 
     private func actualizarProgreso() {
         guard let ruta = rutaElegida, let aqui = ubicacion else { return }
+        ultimoProgreso = Date()
 
         // ¿Llegaste a la siguiente maniobra? Se pasa a la que sigue.
         while let siguiente = pasoSiguiente,
@@ -241,11 +288,15 @@ final class Navegador {
         let falta = (distancia ?? 0) + despues
         restante = (falta, ruta.distancia > 0 ? ruta.duracion * falta / ruta.distancia : 0)
 
+        // Zoom según la velocidad: más lejos en autopista, más cerca al llegar a un giro.
+        zoomNavegacion = Self.zoom(velocidad: aqui.speed, distanciaAlGiro: distancia, modo: modo)
+
         // Llegada: última maniobra cerca.
         if siguiente == nil || (siguiente?.icono == .bandera && (distancia ?? .infinity) < modo.radioManiobra * 1.5) {
             if !llegaste {
                 llegaste = true
-                decir("Has llegado a tu destino")
+                horaLlegada = Date()
+                decir("Has llegado a \(destino?.nombre ?? "tu destino")")
             }
             return
         }
@@ -260,7 +311,7 @@ final class Navegador {
         }
 
         // ¿Te saliste de la ruta? Tres lecturas seguidas a más de 60 m → se recalcula desde aquí.
-        let lejos = distanciaMinima(de: aqui, a: ruta.coordenadas) > (modo == .pie ? 40 : 60)
+        let lejos = distanciaCercana(de: aqui, a: ruta.coordenadas) > (modo == .pie ? 40 : 60)
         fueraDeRuta = lejos ? fueraDeRuta + 1 : 0
         if fueraDeRuta >= 3 {
             fueraDeRuta = 0
@@ -269,19 +320,42 @@ final class Navegador {
             Task {
                 await calcularTodos()
                 pasoActual = 0
+                indiceTrazado = 0
                 anunciado = []
             }
         }
     }
 
-    private func distanciaMinima(de punto: CLLocation, a coordenadas: [CLLocationCoordinate2D]) -> CLLocationDistance {
-        // Basta con los vértices del trazado (están cada pocos metros en calles urbanas).
+    /// Distancia al trazado mirando solo el tramo cercano (unos vértices atrás y más adelante),
+    /// no la ruta entera: en rutas largas son miles de puntos y se trabaría.
+    private func distanciaCercana(de punto: CLLocation, a coordenadas: [CLLocationCoordinate2D]) -> CLLocationDistance {
+        guard !coordenadas.isEmpty else { return .infinity }
+        let desde = max(0, indiceTrazado - 15)
+        let hasta = min(coordenadas.count - 1, indiceTrazado + 160)
         var minima = CLLocationDistance.infinity
-        for c in coordenadas {
+        var mejor = indiceTrazado
+        for i in desde...hasta {
+            let c = coordenadas[i]
             let d = punto.distance(from: CLLocation(latitude: c.latitude, longitude: c.longitude))
-            if d < minima { minima = d }
+            if d < minima { minima = d; mejor = i }
         }
+        indiceTrazado = mejor
         return minima
+    }
+
+    /// Zoom de la cámara al navegar.
+    static func zoom(velocidad: CLLocationSpeed, distanciaAlGiro: CLLocationDistance?, modo: ModoRuta) -> Double {
+        if modo == .pie { return 17.6 }
+        let v = max(0, velocidad) // m/s (negativa = desconocida)
+        var z: Double
+        switch v {
+        case ..<6: z = 17.4      // < 22 km/h: ciudad lenta
+        case ..<14: z = 16.6     // < 50 km/h
+        case ..<24: z = 15.8     // < 86 km/h
+        default: z = 15.0        // autopista
+        }
+        if let d = distanciaAlGiro, d < 250 { z = max(z, 17.2) } // acercar antes del giro
+        return z
     }
 
     private func decir(_ texto: String) {
