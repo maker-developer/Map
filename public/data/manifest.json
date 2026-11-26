@@ -1,1 +1,140 @@
-{"layers":{"condado":{"file":"condado.geojson","count":1,"bytes":38432},"calles":{"file":"calles.geojson","count":116465,"bytes":26347683},"agua":{"file":"agua.geojson","count":5345,"bytes":4674700},"parques":{"file":"parques.geojson","count":563,"bytes":276411},"brickell":{"file":"brickell.geojson","count":8294,"bytes":3129334,"withHeight":7819,"maxHeight":234.3},"miami-beach":{"file":"miami-beach.geojson","count":4566,"bytes":1745000,"withHeight":4185,"maxHeight":141.4},"miami-lakes":{"file":"miami-lakes.geojson","count":26540,"bytes":10232729,"withHeight":25706,"maxHeight":39.0},"paradas":{"file":"paradas.geojson","count":7038,"bytes":1381651},"rutas":{"file":"rutas.geojson","count":215,"bytes":290540},"edificios":{"file":"edificios.pmtiles","bytes":70697232,"count":605762,"withHeight":567911},"base":{"file":"base.pmtiles","bytes":19519565},"transit":{"file":"transit.pmtiles","bytes":2128071,"stops":7038,"routes":215,"optional":true},"playas":{"file":"playas.geojson","count":19,"bytes":81514},"profundidad":{"file":"profundidad.geojson","count":1767,"bytes":1346581},"agua-nombres":{"file":"agua-nombres.geojson","count":83,"bytes":10344},"agua-ejes":{"file":"agua-ejes.geojson","count":4,"bytes":11170}},"zones":{"brickell":{"name":"Downtown y Brickell","bounds":[-80.217,25.747,-80.175,25.801],"center":[-80.196,25.77],"zoom":15.45,"bearing":-20},"miami-beach":{"name":"Miami Beach","bounds":[-80.158,25.756,-80.115,25.813],"center":[-80.137,25.783],"zoom":15.25,"bearing":-25},"miami-lakes":{"name":"Miami Lakes","bounds":[-80.348,25.879,-80.28,25.949],"center":[-80.32,25.914],"zoom":14.85,"bearing":-21}},"generated":"2026-11-26"}
+{
+  "layers": {
+    "condado": {
+      "file": "condado.geojson",
+      "count": 1,
+      "bytes": 38432
+    },
+    "calles": {
+      "file": "calles.geojson",
+      "count": 116465,
+      "bytes": 26347683
+    },
+    "agua": {
+      "file": "agua.geojson",
+      "count": 5345,
+      "bytes": 4674700
+    },
+    "parques": {
+      "file": "parques.geojson",
+      "count": 563,
+      "bytes": 276411
+    },
+    "brickell": {
+      "file": "brickell.geojson",
+      "count": 8294,
+      "bytes": 3129334,
+      "withHeight": 7819,
+      "maxHeight": 234.3
+    },
+    "miami-beach": {
+      "file": "miami-beach.geojson",
+      "count": 4566,
+      "bytes": 1745000,
+      "withHeight": 4185,
+      "maxHeight": 141.4
+    },
+    "miami-lakes": {
+      "file": "miami-lakes.geojson",
+      "count": 26540,
+      "bytes": 10232729,
+      "withHeight": 25706,
+      "maxHeight": 39.0
+    },
+    "paradas": {
+      "file": "paradas.geojson",
+      "count": 7038,
+      "bytes": 1381651
+    },
+    "rutas": {
+      "file": "rutas.geojson",
+      "count": 215,
+      "bytes": 290540
+    },
+    "edificios": {
+      "file": "edificios.pmtiles",
+      "bytes": 70697232,
+      "count": 605762,
+      "withHeight": 567911
+    },
+    "base": {
+      "file": "base.pmtiles",
+      "bytes": 19519565
+    },
+    "transit": {
+      "file": "transit.pmtiles",
+      "bytes": 2128071,
+      "stops": 7038,
+      "routes": 215,
+      "optional": true
+    },
+    "playas": {
+      "file": "playas.geojson",
+      "count": 19,
+      "bytes": 81514
+    },
+    "profundidad": {
+      "file": "profundidad.geojson",
+      "count": 1767,
+      "bytes": 1346581
+    },
+    "agua-nombres": {
+      "file": "agua-nombres.geojson",
+      "count": 83,
+      "bytes": 10344
+    },
+    "agua-ejes": {
+      "file": "agua-ejes.geojson",
+      "count": 4,
+      "bytes": 11170
+    }
+  },
+  "zones": {
+    "brickell": {
+      "name": "Downtown y Brickell",
+      "bounds": [
+        -80.217,
+        25.747,
+        -80.175,
+        25.801
+      ],
+      "center": [
+        -80.196,
+        25.77
+      ],
+      "zoom": 15.45,
+      "bearing": -20
+    },
+    "miami-beach": {
+      "name": "Miami Beach",
+      "bounds": [
+        -80.158,
+        25.756,
+        -80.115,
+        25.813
+      ],
+      "center": [
+        -80.137,
+        25.783
+      ],
+      "zoom": 15.25,
+      "bearing": -25
+    },
+    "miami-lakes": {
+      "name": "Miami Lakes",
+      "bounds": [
+        -80.348,
+        25.879,
+        -80.28,
+        25.949
+      ],
+      "center": [
+        -80.32,
+        25.914
+      ],
+      "zoom": 14.85,
+      "bearing": -21
+    }
+  },
+  "generated": "2026-11-26"
+}

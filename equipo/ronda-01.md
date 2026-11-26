@@ -11,7 +11,7 @@
 - [x] ✅ **C3. Profundidad del agua.** Nueva capa `profundidad` con bandas `0-1`, `1-2`, `2-5`, `5-10`, `10+` desde la batimetría de NOAA, simplificada para que `base.pmtiles` no crezca más de ~10 MB.
 - [x] ✅ **C4. Nombres del agua.** `name` relleno en las masas de agua principales, o capas `agua-nombres` (puntos) y `agua-ejes` (líneas de ríos) si la fuente no los trae.
 - [x] ✅ **C5. Publicar.** Regenerar `public/data/` en `codex/datos` y subir a R2 en `v2/` (sin borrar `v1/`). Anotar abajo en «Entregado» los tamaños y cualquier nombre que cambie.
-- [ ] **C6. Compilar.** Cuando Claude marque A5, fusionar `codex/datos` → `claude/laboratorio-ios` (solo `public/data/` y `data/`), compilar Map Lab y dejarlo en el iPhone. Errores de compilación: arreglo mínimo con commit `Compilación: …`.
+- [x] ✅ **C6. Compilar.** Cuando Claude marque A5, fusionar `codex/datos` → `claude/laboratorio-ios` (solo `public/data/` y `data/`), compilar Map Lab y dejarlo en el iPhone. Errores de compilación: arreglo mínimo con commit `Compilación: …`.
 
 ## Claude (rama `claude/laboratorio-ios`)
 
@@ -34,7 +34,8 @@
 | Codex | C2 · polígonos de playas | `data/scripts/preparar.py`, `data/SOURCES.md` | Capa `playas`, `name` desde `Beachpoly_gdb`; minzoom 9. Fuente ofrece 19 polígonos nombrados. |
 | Codex | C3 · bandas de profundidad | `data/scripts/preparar.py`, `data/requirements.txt`, `data/SOURCES.md` | NOAA CRM Vol. 3 (2023), 1 segundo de arco; 1,767 polígonos simplificados en el recorte, GeoJSON 1,346,581 bytes. Tamaño final dentro de `base.pmtiles` se medirá en C5. |
 | Codex | C4 · nombres sobre el agua | `data/scripts/preparar.py`, `data/SOURCES.md` | Capa de 83 puntos `agua-nombres` y 4 líneas agrupadas `agua-ejes`; incluye Biscayne Bay, Atlantic Ocean, 81 lagos/lagunas nombrados y las cuatro vías del contrato. Nombres hidrográficos de OSM por falta de topónimos en las capas de agua del condado. |
-| Codex | C5 · archivos publicados en v2 | `public/data/`, R2 `map-tiles/v2/` | `base.pmtiles` 19,519,565 B (+2,889,097 B vs. v1, bajo el objetivo de +~10 MB); `buildings.pmtiles` 70,697,232 B; `transit.pmtiles` 2,128,071 B; `manifest.json` 1,653 B. R2 conserva el nombre contractual `buildings.pmtiles`; el archivo del repo sigue como `edificios.pmtiles`. v1 no se borró. R2 público: `https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/v2/`. |
+| Codex | C5 · archivos publicados en v2 | `public/data/`, R2 `map-tiles/v2/` | `base.pmtiles` 19,519,565 B (+2,889,097 B vs. v1, bajo el objetivo de +~10 MB); `buildings.pmtiles` 70,697,232 B; `transit.pmtiles` 2,128,071 B; `manifest.json` 2,654 B. R2 conserva el nombre contractual `buildings.pmtiles`; el archivo del repo sigue como `edificios.pmtiles`. v1 no se borró. R2 público: `https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/v2/`. |
+| Codex | C6 · integración y prueba en iPhone | Rama `claude/laboratorio-ios`, commit `7730bc2`; iPhone 17 Pro Max | A5 estaba ✅. Integrados solo `data/` y `public/data/`; Map Lab compiló, se instaló y abrió. Para esta instalación se usó `MapNubeURL` v2 temporalmente sin editar `viewers/ios/project.yml`; queda el pedido a Claude para cambiar el valor del repo a `/v2`. |
 | | | | |
 
 ## Probar (el dueño, en el iPhone)

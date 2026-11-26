@@ -79,6 +79,13 @@ def write(filename, data):
     staging.replace(path)
 
 
+def write_manifest(data):
+    path = DATOS / "manifest.json"
+    staging = path.with_suffix(".tmp")
+    staging.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    staging.replace(path)
+
+
 def collection(features):
     return {"type": "FeatureCollection", "features": features}
 
@@ -422,7 +429,7 @@ def main():
         existing_layers = existing.get("layers", {})
         existing_layers.update(layers)
         existing_layers.update(tile_info)
-        write("manifest.json", {**existing, "layers": existing_layers, "generated": time.strftime("%Y-%m-%d")})
+        write_manifest({**existing, "layers": existing_layers, "generated": time.strftime("%Y-%m-%d")})
         return
     bundle = read_bundle(args.gtfs_datos)
     build_jobs = [
@@ -457,7 +464,7 @@ def main():
         layers["agua-ejes"] = layer_meta("agua-ejes.geojson", water_axes)
         layers["edificios"] = county_building_tiles(args.tippecanoe, args.actualizar)
         layers.update(base_tiles(args.tippecanoe))
-    write("manifest.json", {"layers": layers, "zones": ZONES, "generated": time.strftime("%Y-%m-%d")})
+    write_manifest({"layers": layers, "zones": ZONES, "generated": time.strftime("%Y-%m-%d")})
 
 
 if __name__ == "__main__":
