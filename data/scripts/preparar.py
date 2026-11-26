@@ -155,7 +155,8 @@ def tile_archive(tippecanoe, path, inputs):
 
 
 def base_tiles(tippecanoe):
-    zooms = {"condado": 7, "calles": 8, "agua": 7, "parques": 9, "paradas": 13, "rutas": 10}
+    zooms = {"condado": 7, "calles": 8, "agua": 7, "parques": 9, "playas": 9,
+             "paradas": 13, "rutas": 10}
     sources = {name: ROOT / "data" / ".cache" / f"{name}.ndjson" for name in ("base", "transit")}
     output_files = {"base": DATOS / "base.pmtiles", "transit": DATOS / "transit.pmtiles"}
     for source in sources.values():
@@ -272,6 +273,7 @@ def main():
          "SNAME,ST_NAME,CLASS,RAMP,BRIDGE,TUNNEL,F_ZLEV,T_ZLEV", street, {"simplify": 0.000008}),
         ("agua", service("Water_gdb"), "NAME", named, {"simplify": 0.000014}),
         ("parques", service("MunicipalParkBoundary_gdb"), "NAME", named, {"simplify": 0.00001}),
+        ("playas", service("Beachpoly_gdb"), "NAME", named, {"simplify": 0.000004}),
     ]
     for key, zone in ZONES.items():
         build_jobs.append((key, service(BUILDING_SERVICE), BUILDING_FIELDS, building,

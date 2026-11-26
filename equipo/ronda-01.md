@@ -7,7 +7,7 @@
 ## Codex (rama `codex/datos`)
 
 - [x] ✅ **C1. Calles con jerarquía.** Añadir a `calles` las propiedades `clase`, `puente`, `tunel` y `ref` según [`capas.md`](capas.md). Mantener `name` y `kind`. Documentar en `data/SOURCES.md` la tabla CLASS → `clase` y de dónde salen puente, túnel y número de vía.
-- [ ] **C2. Playas.** Nueva capa `playas` (polígonos con `name`) en `base.pmtiles`. Documentar la fuente.
+- [x] ✅ **C2. Playas.** Nueva capa `playas` (polígonos con `name`) en `base.pmtiles`. Documentar la fuente.
 - [ ] **C3. Profundidad del agua.** Nueva capa `profundidad` con bandas `0-1`, `1-2`, `2-5`, `5-10`, `10+` desde la batimetría de NOAA, simplificada para que `base.pmtiles` no crezca más de ~10 MB.
 - [ ] **C4. Nombres del agua.** `name` relleno en las masas de agua principales, o capas `agua-nombres` (puntos) y `agua-ejes` (líneas de ríos) si la fuente no los trae.
 - [ ] **C5. Publicar.** Regenerar `public/data/` en `codex/datos` y subir a R2 en `v2/` (sin borrar `v1/`). Anotar abajo en «Entregado» los tamaños y cualquier nombre que cambie.
@@ -31,6 +31,7 @@
 | Quién | Qué | Dónde | Notas |
 | --- | --- | --- | --- |
 | Codex | C1 · jerarquía de calles y propiedades | `data/scripts/preparar.py`, `data/SOURCES.md` | Conserva `name` y `kind`; `CLASS=0` y `RAMP` permiten identificar rampas. `BRIDGE`/`TUNNEL` llegan nulos en la fuente consultada; `puente` también usa `F_ZLEV`/`T_ZLEV`; `tunel` queda false si no hay marca. `ref` se lee del nombre o alias documentados. |
+| Codex | C2 · polígonos de playas | `data/scripts/preparar.py`, `data/SOURCES.md` | Capa `playas`, `name` desde `Beachpoly_gdb`; minzoom 9. Fuente ofrece 19 polígonos nombrados. |
 | | | | |
 
 ## Probar (el dueño, en el iPhone)
