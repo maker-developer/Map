@@ -49,13 +49,17 @@ extension EstiloMapa {
 
     // MARK: - Expresiones comunes
 
-    /// Clase de la vía: `clase` de Codex o, mientras no llegue, el CLASS del condado (`kind`).
-    /// kind: 0 rampa · 1 autopista · 2 principal · 3 avenida · 4 colectora · 5 local · 6–8 servicio · 9 peatonal.
+    /// Clase de la vía (tabla única en `equipo/capas.md`):
+    /// rampa si Codex la marca (CLASS 0, campo RAMP o « RAMP» en el nombre); si no, por el CLASS
+    /// del condado (`kind`): 1 autopista · 2 principal · 3 avenida · 4 colectora · 5 local ·
+    /// 6–8 servicio · 9 peatonal; sin `kind`, la `clase` del dato (o local).
     static let clase: [Any] = [
-        "coalesce", ["get", "clase"],
-        ["match", ["get", "kind"],
+        "case",
+        ["==", ["get", "clase"], "rampa"], "rampa",
+        ["match", ["coalesce", ["get", "kind"], ""],
          "0", "rampa", "1", "autopista", "2", "principal", "3", "avenida",
-         "4", "colectora", "5", "local", "9", "peatonal", "servicio"],
+         "4", "colectora", "5", "local", "6", "servicio", "7", "servicio", "8", "servicio", "9", "peatonal",
+         ["coalesce", ["get", "clase"], "local"]],
     ]
 
     /// Tipo de escudo: `red` de Codex o, si no viene, deducido del número de la vía.

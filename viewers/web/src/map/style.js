@@ -11,12 +11,17 @@ const lineLayout = { 'line-cap': 'round', 'line-join': 'round' };
 
 export const themes = { light, dark };
 
-// Clase de la vía: `clase` de Codex o, mientras no llegue, el CLASS del condado (`kind`).
-// kind: 0 rampa · 1 autopista · 2 principal · 3 avenida · 4 colectora · 5 local · 6–8 servicio · 9 peatonal.
-export const clase = ['coalesce', ['get', 'clase'],
-  ['match', ['get', 'kind'],
+// Clase de la vía (tabla única en equipo/capas.md):
+// - rampa si Codex la marca (CLASS 0, campo RAMP o « RAMP» en el nombre);
+// - si no, por el CLASS del condado (`kind`): 1 autopista · 2 principal · 3 avenida · 4 colectora ·
+//   5 local · 6–8 servicio · 9 peatonal;
+// - sin `kind`, la `clase` que traiga el dato (o local).
+export const clase = ['case',
+  ['==', ['get', 'clase'], 'rampa'], 'rampa',
+  ['match', ['coalesce', ['get', 'kind'], ''],
     '0', 'rampa', '1', 'autopista', '2', 'principal', '3', 'avenida',
-    '4', 'colectora', '5', 'local', '9', 'peatonal', 'servicio']];
+    '4', 'colectora', '5', 'local', '6', 'servicio', '7', 'servicio', '8', 'servicio', '9', 'peatonal',
+    ['coalesce', ['get', 'clase'], 'local']]];
 
 const esClase = valores => ['in', clase, ['literal', valores]];
 

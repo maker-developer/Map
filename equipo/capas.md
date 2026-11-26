@@ -55,7 +55,12 @@ Comprobado por Claude leyendo `base.pmtiles` (Brickell, Downtown, Miami Beach, M
 | `6`, `7`, `8` | `servicio` | callejones, privadas (Lenox Ct, Riverfront Aly) |
 | `9` | `peatonal` | Lincoln Rd |
 
-El estilo de la ronda 1 ya usa esta tabla a partir de `kind` mientras no llegue `clase`.
+**Esta es la tabla única** (acordada tras la revisión de Cursor). El estilo la aplica así, en web e iOS:
+1. `rampa` si el dato trae `clase = rampa` (Codex la detecta mejor: CLASS 0, campo RAMP o « RAMP» en el nombre);
+2. si no, por `kind` con la tabla de arriba;
+3. sin `kind`, la `clase` del dato (o `local`).
+
+Pedido a Codex: que `clase` siga esta misma tabla (hoy CLASS 2 sale `avenida` y CLASS 9 `servicio`), para que el índice de búsqueda y cualquier otro uso digan lo mismo que el mapa.
 
 ### `calles`: propiedades nuevas (se mantienen `name` y `kind`)
 

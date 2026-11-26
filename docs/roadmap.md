@@ -1,22 +1,14 @@
 # Alcance de Map
 
-## Estado actual
+El plan vivo del proyecto está en [`equipo/`](../equipo/README.md):
 
-- Visor web interactivo para Miami-Dade.
-- Estilos neutros claro y oscuro.
-- Calles, agua, parques y límite del condado en teselas base.
-- Huellas de edificios y edificios con altura en PMTiles separado.
-- Transporte como complemento PMTiles separado, apagable en el visor.
-- Generador de datos reproducible.
+- [Cómo trabajan Claude, Codex y Cursor](../equipo/README.md): reparto, ramas y ciclo de cada ronda.
+- [Hoja de ruta](../equipo/hoja-de-ruta.md): las rondas (calles y agua, búsqueda, rutas a pie y en coche, barrios, tren elevado, lugares, suelo, edificios, noche, estilo único, nube, más allá del condado).
+- [Contrato de datos](../equipo/capas.md): capas y propiedades.
+- [Registro](../equipo/registro.md): qué se hizo y qué decidió el dueño en cada ronda.
 
-## Siguiente
+## Principios que no cambian
 
-1. Revisar las capas, metadatos, antigüedad y permisos de distribución.
-2. Completar un catálogo uniforme de barrios y direcciones del condado.
-3. Probar el índice de búsqueda local en el visor web.
-4. Medir tamaño, memoria, rapidez y zoom en el iPhone.
-5. Crear un visor mínimo con MapLibre Native para iOS.
-6. Revisar datos LiDAR, alturas y cobertura de cruces.
-7. Añadir navegación solo después de validar caminos y restricciones.
-
-La línea visual, el uso de MapLibre y el catálogo geográfico son decisiones distintas. Un mapa puede tener estilo y distribución propios aunque una fuente documentada aporte parte de la información geográfica.
+- El diseño del mapa, las capas geográficas, los visores y las funciones opcionales tienen límites separados.
+- La línea visual, el uso de MapLibre y el catálogo geográfico son decisiones distintas. Un mapa puede tener estilo y distribución propios aunque una fuente documentada aporte parte de la información geográfica.
+- Navegación solo después de validar caminos y restricciones.
