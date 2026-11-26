@@ -156,7 +156,8 @@ def tile_archive(tippecanoe, path, inputs):
 
 def base_tiles(tippecanoe, base_only=False):
     zooms = {"condado": 7, "calles": 8, "agua": 7, "parques": 9, "playas": 9,
-             "profundidad": 7, "paradas": 13, "rutas": 10}
+             "profundidad": 7, "agua-nombres": 10, "agua-ejes": 10,
+             "paradas": 13, "rutas": 10}
     if base_only:
         zooms = {name: zoom for name, zoom in zooms.items()
                  if name not in {"paradas", "rutas"}}
@@ -277,6 +278,61 @@ def bathymetry(refresh):
     return rows
 
 
+def named_water_layers(refresh):
+    """Obtiene ejes y topónimos hidrográficos nombrados de OpenStreetMap."""
+    cache = ROOT / "data" / ".cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    source = cache / "osm-water.json"
+    if refresh or not source.exists():
+        query = ('[out:json][timeout:60];(way["waterway"]["name"~'
+                 '"Miami River|Little River|Snake Creek|Intracoastal Waterway",i]'
+                 '(25.18,-81.0,26.05,-79.65););out geom;'
+                 '(way["natural"="water"]["name"](25.18,-81.0,26.05,-79.65);'
+                 'relation["natural"="water"]["name"](25.18,-81.0,26.05,-79.65););out center;')
+        req = Request("https://overpass-api.de/api/interpreter", data=query.encode(),
+                      headers={"Content-Type": "application/x-www-form-urlencoded",
+                               "User-Agent": "Map Miami-Dade data pipeline/1.0"})
+        with urlopen(req, timeout=90) as response:
+            source.write_bytes(response.read())
+    elements = json.loads(source.read_text(encoding="utf-8"))["elements"]
+    axes, labels = {}, [
+        feature({"type": "Point", "coordinates": [-80.18, 25.66]}, name="Biscayne Bay"),
+        feature({"type": "Point", "coordinates": [-79.78, 25.68]}, name="Atlantic Ocean"),
+    ]
+    canonical = (("Miami River", "Miami River"), ("Little River", "Little River"),
+                 ("Snake Creek", "Snake Creek"), ("Intracoastal Waterway", "Intracoastal Waterway"))
+    for element in elements:
+        tags = element.get("tags", {})
+        name = tags.get("name", "").strip()
+        if not name:
+            continue
+        if tags.get("waterway"):
+            mapped = next((label for token, label in canonical if token.lower() in name.lower()), None)
+            coords = [[point["lon"], point["lat"]] for point in element.get("geometry", [])]
+            if mapped and len(coords) >= 2:
+                axes.setdefault(mapped, []).append(coords)
+            continue
+        if tags.get("natural") != "water" or not any(
+                word in name.lower() for word in ("lake", "bay", "lagoon")):
+            continue
+        center = element.get("center")
+        geometry = element.get("geometry", [])
+        if center:
+            location = [center["lon"], center["lat"]]
+        elif geometry:
+            location = [sum(p["lon"] for p in geometry) / len(geometry),
+                        sum(p["lat"] for p in geometry) / len(geometry)]
+        else:
+            continue
+        labels.append(feature({"type": "Point", "coordinates": location}, name=name))
+    line_rows = [feature({"type": "MultiLineString", "coordinates": segments}, name=name)
+                 for name, segments in axes.items()]
+    write("agua-nombres.geojson", collection(labels))
+    write("agua-ejes.geojson", collection(line_rows))
+    print(f"agua-nombres: {len(labels)}; agua-ejes: {len(line_rows)} nombres", flush=True)
+    return labels, line_rows
+
+
 def truthy(value):
     return str(value or "").strip().lower() in {"1", "true", "yes", "y", "t"}
 
@@ -347,6 +403,9 @@ def main():
             layers[name] = layer_meta(f"{name}.geojson", rows)
         depth_rows = bathymetry(args.actualizar)
         layers["profundidad"] = layer_meta("profundidad.geojson", depth_rows)
+        water_labels, water_axes = named_water_layers(args.actualizar)
+        layers["agua-nombres"] = layer_meta("agua-nombres.geojson", water_labels)
+        layers["agua-ejes"] = layer_meta("agua-ejes.geojson", water_axes)
         tile_info = base_tiles(args.tippecanoe, base_only=True)
         existing = json.loads((DATOS / "manifest.json").read_text()) if (DATOS / "manifest.json").exists() else {}
         existing_layers = existing.get("layers", {})
@@ -382,6 +441,9 @@ def main():
     if args.todo_condado:
         depth_rows = bathymetry(args.actualizar)
         layers["profundidad"] = layer_meta("profundidad.geojson", depth_rows)
+        water_labels, water_axes = named_water_layers(args.actualizar)
+        layers["agua-nombres"] = layer_meta("agua-nombres.geojson", water_labels)
+        layers["agua-ejes"] = layer_meta("agua-ejes.geojson", water_axes)
         layers["edificios"] = county_building_tiles(args.tippecanoe, args.actualizar)
         layers.update(base_tiles(args.tippecanoe))
     write("manifest.json", {"layers": layers, "zones": ZONES, "generated": time.strftime("%Y-%m-%d")})
