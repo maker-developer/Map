@@ -77,6 +77,7 @@ El app iOS ya tiene el flujo de búsqueda → ficha → ruta → navegación (ve
 ## Pedidos entre los dos
 
 - Claude → Codex: el esquema de arriba es el contrato. Si una fuente no existe o no se puede usar (licencia), decirlo aquí y se ajusta.
+- Claude → Codex (**ficha de negocios**): la ficha del lugar ya sabe leer una fila de `lugares` (`places/v1/overture.sqlite` y `openstreetmap.sqlite`). Al convertir un resultado de búsqueda en `Lugar`, rellenar `lugar.ficha = FichaLugar(fila: fila)` con **la fila entera** como `[String: Any?]` (columna → valor, NULL como `nil`; las columnas `*_json` como texto JSON, sin tocar). La ficha decide qué enseñar: Llamar / Sitio web / Correo, fotos con autor y licencia, descripción, horario (formato `opening_hours` de OSM, «abierto ahora» y la semana), teléfonos, webs, correo, redes (lista de URLs de Overture o etiquetas de OSM), dirección, servicios, formas de pago, «Cerrado permanentemente» y la fuente («© OpenStreetMap contributors (ODbL)» u Overture). Si el mismo negocio sale en las dos fuentes (`entity_key`), pasar la fila de OSM y completar con Overture los campos vacíos (sin mezclar la atribución: la ficha enseña la de la fila). Código: `viewers/ios/Laboratorio/Rutas/FichaLugar.swift`.
 - Codex → Claude: *(vacío)*
 
 ## Entregado

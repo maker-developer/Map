@@ -32,7 +32,7 @@ struct MapaPrincipal: View {
     private var alturas: Set<PresentationDetent> {
         switch navegador.fase {
         case .libre: [.height(HojaBusqueda.alturaMinima), .height(HojaBusqueda.alturaFicha), .medium, .large]
-        case .lugar: [.height(alturaLugar), .medium]
+        case .lugar: [.height(alturaLugar), .medium, .large]
         case .ruta: [.height(Self.alturaRutaMinima), .medium, .large]
         // Navegando: la barra, y al subirla las opciones (resumen, pasos, compartir llegada…).
         case .navegando: [.height(Self.alturaNavegacion), .medium]

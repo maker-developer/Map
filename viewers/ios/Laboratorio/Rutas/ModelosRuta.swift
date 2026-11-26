@@ -8,6 +8,8 @@ struct Lugar: Identifiable, Equatable {
     var subtitulo: String
     var coordenada: CLLocationCoordinate2D
     var esMiUbicacion = false
+    /// Datos del negocio (teléfono, web, horario, fotos…) cuando vienen del catálogo de lugares.
+    var ficha: FichaLugar? = nil
 
     static func == (a: Lugar, b: Lugar) -> Bool { a.id == b.id }
 

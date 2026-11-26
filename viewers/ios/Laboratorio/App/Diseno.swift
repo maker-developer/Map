@@ -54,6 +54,25 @@ enum Lc: String {
     case trabajo = "briefcase"
     case recientes = "clock"
     case listaPasos = "list-ordered"
+    // Ficha de negocios
+    case telefono = "phone"
+    case web = "globe"
+    case correo = "mail"
+    case foto = "image"
+    case tarjeta = "credit-card"
+    case comida = "utensils"
+    case accesible = "accessibility"
+    case wifi = "wifi"
+    case tienda = "store"
+    case etiqueta = "tag"
+    case verificado = "badge-check"
+    case compras = "shopping-bag"
+    case entrega = "truck"
+    case asiento = "armchair"
+    case horario = "calendar-clock"
+    case hoja = "leaf"
+    case enlace = "link"
+    case arroba = "at-sign"
 
     var imagen: Image { Image("lc.\(rawValue)") }
 }
