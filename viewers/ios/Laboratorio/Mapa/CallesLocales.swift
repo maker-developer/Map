@@ -15,7 +15,7 @@ final class CallesLocales: @unchecked Sendable {
     private var intentado = false
     private var cabecera = Cabecera()
     private var directorios: [UInt64: [Entrada]] = [:]
-    private var teselas: [UInt64: [[CLLocationCoordinate2D]]] = [:]
+    private var teselas: [UInt64: [Calle]] = [:]
 
     private struct Cabecera {
         var raiz: (offset: UInt64, largo: UInt64) = (0, 0)
@@ -158,41 +158,97 @@ final class CallesLocales: @unchecked Sendable {
     // MARK: Teselas
 
     private func lineas(z: Int, x: Int, y: Int) -> [[CLLocationCoordinate2D]] {
+        callesTesela(z: z, x: x, y: y).map(\.puntos)
+    }
+
+    /// Una calle de la tesela con su velocidad máxima (mph), si el dato existe.
+    struct Calle {
+        let puntos: [CLLocationCoordinate2D]
+        let vmax: Int?
+    }
+
+    private func callesTesela(z: Int, x: Int, y: Int) -> [Calle] {
         let clave = Self.idTesela(z: z, x: x, y: y)
         if let hecho = teselas[clave] { return hecho }
-        var res: [[CLLocationCoordinate2D]] = []
+        var res: [Calle] = []
         if let d = datosTesela(z: z, x: x, y: y) {
             for geo in Self.geometriasCalles(d) {
-                res.append(geo.map { Self.coordenada(tx: x, ty: y, z: z, px: $0.x, py: $0.y, extension_: $0.ext) })
+                res.append(Calle(puntos: geo.puntos.map {
+                    Self.coordenada(tx: x, ty: y, z: z, px: $0.x, py: $0.y, extension_: $0.ext)
+                }, vmax: geo.vmax))
             }
         }
         teselas[clave] = res
         return res
     }
 
-    /// Las líneas (en unidades de tesela) de la capa «calles» de una Mapbox Vector Tile.
-    private static func geometriasCalles(_ d: Data) -> [[(x: Double, y: Double, ext: Double)]] {
+    /// Velocidad máxima (mph) de la calle por la que vas: la más cercana (≤ 25 m) que va en tu rumbo.
+    /// nil si no hay calle cerca o la calle no tiene el dato (Codex lo añade como `vmax` en `calles`).
+    func limite(en punto: CLLocationCoordinate2D, rumbo: Double?) -> Int? {
+        cola.sync {
+            guard abrir() else { return nil }
+            let z = min(16, cabecera.zoomMaximo)
+            let t = Self.tesela(lat: punto.latitude, lon: punto.longitude, z: z)
+            let mLat = 111_320.0, mLon = 111_320.0 * cos(punto.latitude * .pi / 180)
+            var mejor: (dist: Double, vmax: Int?)?
+            for dx in -1...1 {
+                for dy in -1...1 {
+                    for calle in callesTesela(z: z, x: t.x + dx, y: t.y + dy) where calle.puntos.count > 1 {
+                        for k in 0..<(calle.puntos.count - 1) {
+                            let a = SIMD2((calle.puntos[k].longitude - punto.longitude) * mLon, (calle.puntos[k].latitude - punto.latitude) * mLat)
+                            let b = SIMD2((calle.puntos[k + 1].longitude - punto.longitude) * mLon, (calle.puntos[k + 1].latitude - punto.latitude) * mLat)
+                            let ab = b - a
+                            let l2 = ab.x * ab.x + ab.y * ab.y
+                            guard l2 > 0.25 else { continue }
+                            if let rumbo {
+                                var r = atan2(ab.x, ab.y) * 180 / .pi
+                                if r < 0 { r += 360 }
+                                let d = abs(r - rumbo).truncatingRemainder(dividingBy: 180)
+                                if min(d, 180 - d) > 35 { continue }
+                            }
+                            let u = max(0, min(1, -(a.x * ab.x + a.y * ab.y) / l2))
+                            let q = a + ab * u
+                            let dist = (q.x * q.x + q.y * q.y).squareRoot()
+                            if dist <= 25, dist < (mejor?.dist ?? .infinity) { mejor = (dist, calle.vmax) }
+                        }
+                    }
+                }
+            }
+            return mejor?.vmax ?? nil
+        }
+    }
+
+    /// Las líneas (en unidades de tesela) de la capa «calles» de una Mapbox Vector Tile, con su `vmax`.
+    private static func geometriasCalles(_ d: Data) -> [(puntos: [(x: Double, y: Double, ext: Double)], vmax: Int?)] {
         var tile = Lector(d)
-        var res: [[(x: Double, y: Double, ext: Double)]] = []
+        var res: [(puntos: [(x: Double, y: Double, ext: Double)], vmax: Int?)] = []
         while !tile.fin {
             let (campo, tipo) = tile.etiqueta()
             guard campo == 3, tipo == 2 else { tile.saltar(tipo); continue }
             var capa = Lector(tile.bytes())
             var nombre = ""
             var extent: Double = 4096
-            var geometrias: [[UInt32]] = []
+            var claves: [String] = []
+            var valores: [Double?] = []
+            var rasgos: [(geo: [UInt32], tags: [UInt32])] = []
             while !capa.fin {
                 let (c, t) = capa.etiqueta()
                 switch (c, t) {
                 case (1, 2): nombre = String(decoding: capa.bytes(), as: UTF8.self)
                 case (5, 0): extent = Double(capa.varint())
+                case (3, 2): claves.append(String(decoding: capa.bytes(), as: UTF8.self))
+                case (4, 2): valores.append(valorNumerico(capa.bytes()))
                 case (2, 2):
                     var f = Lector(capa.bytes())
                     var tipoGeo: UInt64 = 0
                     var geo: [UInt32] = []
+                    var tags: [UInt32] = []
                     while !f.fin {
                         let (fc, ft) = f.etiqueta()
                         switch (fc, ft) {
+                        case (2, 2):
+                            var g = Lector(f.bytes())
+                            while !g.fin { tags.append(UInt32(truncatingIfNeeded: g.varint())) }
                         case (3, 0): tipoGeo = f.varint()
                         case (4, 2):
                             var g = Lector(f.bytes())
@@ -200,19 +256,33 @@ final class CallesLocales: @unchecked Sendable {
                         default: f.saltar(ft)
                         }
                     }
-                    if tipoGeo == 2 { geometrias.append(geo) }
+                    if tipoGeo == 2 { rasgos.append((geo, tags)) }
                 default: capa.saltar(t)
                 }
             }
             guard nombre == "calles" else { continue }
-            for geo in geometrias {
+            let claveVmax = claves.firstIndex(of: "vmax") ?? claves.firstIndex(of: "maxspeed")
+            for rasgo in rasgos {
+                // Velocidad máxima de la calle (mph), si viene en sus etiquetas.
+                var vmax: Int?
+                if let claveVmax {
+                    var k = 0
+                    while k + 1 < rasgo.tags.count {
+                        if Int(rasgo.tags[k]) == claveVmax, Int(rasgo.tags[k + 1]) < valores.count,
+                           let v = valores[Int(rasgo.tags[k + 1])], v > 0 {
+                            vmax = Int(v.rounded())
+                        }
+                        k += 2
+                    }
+                }
+                let geo = rasgo.geo
                 var i = 0, cx: Int64 = 0, cy: Int64 = 0
                 var actual: [(x: Double, y: Double, ext: Double)] = []
                 while i < geo.count {
                     let cmd = geo[i] & 0x7, cuenta = Int(geo[i] >> 3)
                     i += 1
                     if cmd == 1 || cmd == 2 {
-                        if cmd == 1, actual.count > 1 { res.append(actual) }
+                        if cmd == 1, actual.count > 1 { res.append((actual, vmax)) }
                         if cmd == 1 { actual = [] }
                         for _ in 0..<cuenta {
                             guard i + 1 < geo.count else { i = geo.count; break }
@@ -226,7 +296,38 @@ final class CallesLocales: @unchecked Sendable {
                         break
                     }
                 }
-                if actual.count > 1 { res.append(actual) }
+                if actual.count > 1 { res.append((actual, vmax)) }
+            }
+        }
+        return res
+    }
+
+    /// Un `Value` de MVT como número (texto «45» o «45 mph» también vale).
+    private static func valorNumerico(_ bytes: [UInt8]) -> Double? {
+        var v = Lector(bytes)
+        var res: Double?
+        while !v.fin {
+            let (c, t) = v.etiqueta()
+            switch (c, t) {
+            case (1, 2):
+                let texto = String(decoding: v.bytes(), as: UTF8.self)
+                res = Double(texto.split(separator: " ").first.map(String.init) ?? "")
+            case (2, 5):
+                var b: UInt32 = 0
+                for k in 0..<4 where v.i + k < v.d.count { b |= UInt32(v.d[v.i + k]) << (8 * UInt32(k)) }
+                v.i += 4
+                res = Double(Float(bitPattern: b))
+            case (3, 1):
+                var b: UInt64 = 0
+                for k in 0..<8 where v.i + k < v.d.count { b |= UInt64(v.d[v.i + k]) << (8 * UInt64(k)) }
+                v.i += 8
+                res = Double(bitPattern: b)
+            case (4, 0): res = Double(Int64(bitPattern: v.varint()))
+            case (5, 0): res = Double(v.varint())
+            case (6, 0):
+                let z = v.varint()
+                res = Double(Int64(bitPattern: (z >> 1) ^ (0 &- (z & 1))))
+            default: v.saltar(t)
             }
         }
         return res

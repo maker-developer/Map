@@ -51,6 +51,10 @@ final class Navegador {
     /// Rumbo de marcha (último válido) y velocidad, para la cámara y la burbuja de velocidad.
     private(set) var rumbo: CLLocationDirection = 0
     private(set) var velocidad: CLLocationSpeed = 0
+    /// Velocidad máxima de la calle por la que vas, en mph (nil si no hay dato).
+    private(set) var limiteVelocidad: Int?
+    private var ultimoLimite = Date.distantPast
+    private var buscandoLimite = false
 
     /// Casa, Trabajo, guardados y recientes.
     let favoritos = Favoritos()
@@ -276,6 +280,7 @@ final class Navegador {
     /// Cierra todo y vuelve al mapa libre.
     func cerrar() {
         hablador.stopSpeaking(at: .immediate)
+        limiteVelocidad = nil
         fase = .libre
         destino = nil
         origen = nil
@@ -300,6 +305,25 @@ final class Navegador {
         // Como mucho un cálculo por segundo: suficiente para la voz y el banner, y no se traba.
         guard fase == .navegando, Date().timeIntervalSince(ultimoProgreso) >= 1 else { return }
         actualizarProgreso()
+        buscarLimite(en: nueva)
+    }
+
+    /// Cada 2 s, la velocidad máxima de la calle (de nuestras calles, en segundo plano).
+    private func buscarLimite(en lugar: CLLocation) {
+        guard !buscandoLimite, Date().timeIntervalSince(ultimoLimite) >= 2 else { return }
+        buscandoLimite = true
+        ultimoLimite = Date()
+        let punto = lugar.coordinate
+        let rumbo: Double? = lugar.course >= 0 && lugar.speed > 2 ? lugar.course : nil
+        Task.detached(priority: .utility) { [weak self] in
+            let limite = CallesLocales.compartidas.limite(en: punto, rumbo: rumbo)
+            await MainActor.run {
+                guard let self else { return }
+                self.buscandoLimite = false
+                // Si no se encuentra calle un momento (cruce, GPS), se mantiene el último límite.
+                if limite != nil || rumbo != nil { self.limiteVelocidad = limite }
+            }
+        }
     }
 
     private func actualizarProgreso() {

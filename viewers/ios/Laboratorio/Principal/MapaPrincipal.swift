@@ -118,7 +118,7 @@ struct MapaPrincipal: View {
         // Navegando: la velocidad actual (como Google Maps)…
         .overlay(alignment: modoPanel ? .bottomTrailing : .bottomLeading) {
             if navegador.fase == .navegando, navegador.siguiendo, !navegador.llegaste {
-                BurbujaVelocidad(metrosPorSegundo: navegador.velocidad)
+                BurbujaVelocidad(metrosPorSegundo: navegador.velocidad, limiteMph: navegador.limiteVelocidad)
                     .padding(.horizontal, 16)
                     .padding(.bottom, modoPanel ? 16 : 128)
                     .transition(.opacity)
@@ -391,26 +391,101 @@ struct MapaPrincipal: View {
     }
 }
 
-/// Velocidad actual en mph o km/h según la región del iPhone.
+/// Velocidad actual en mph o km/h según la región del iPhone y, debajo, la velocidad máxima de la
+/// calle cuando el dato existe (señal blanca rectangular como las de EE. UU.; en km/h, el círculo rojo).
+/// Si vas un poco por encima, la cifra se pone naranja; si te pasas mucho (5 mph / 8 km/h o más), la
+/// burbuja se tiñe de rojo, late suave y vibra una vez.
 private struct BurbujaVelocidad: View {
     let metrosPorSegundo: Double
+    /// Velocidad máxima de la calle en mph (nil si no hay dato).
+    var limiteMph: Int?
+
+    private var millas: Bool { Locale.current.measurementSystem == .us }
 
     var body: some View {
-        let millas = Locale.current.measurementSystem == .us
-        let valor = metrosPorSegundo * (millas ? 2.23694 : 3.6)
-        VStack(spacing: -2) {
-            Text("\(Int(valor.rounded()))")
-                .font(.title2.weight(.bold))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-            Text(millas ? "mph" : "km/h")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+        let factor = millas ? 2.23694 : 3.6
+        let valor = Int((metrosPorSegundo * factor).rounded())
+        // El límite en la unidad del iPhone (en km/h, redondeado a 5 como las señales).
+        let limite: Int? = limiteMph.map { millas ? $0 : Int((Double($0) * 1.609344 / 5).rounded()) * 5 }
+        let exceso = limite.map { valor - $0 } ?? 0
+        let mucho = exceso >= (millas ? 5 : 8)
+        let poco = exceso > 0 && !mucho
+
+        VStack(spacing: 8) {
+            VStack(spacing: -2) {
+                Text("\(valor)")
+                    .font(.title2.weight(.bold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .foregroundStyle(mucho ? Color.white : (poco ? Color.orange : Color.primary))
+                Text(millas ? "mph" : "km/h")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(mucho ? Color.white.opacity(0.85) : Color.secondary)
+            }
+            .frame(width: 62, height: 62)
+            .background {
+                if mucho { Circle().fill(Color.red.gradient) }
+            }
+            .vidrio(Circle(), tinte: mucho ? .red : nil)
+            // Late suave mientras te pasas mucho.
+            .phaseAnimator([false, true]) { burbuja, fase in
+                burbuja.scaleEffect(mucho && fase ? 1.09 : 1)
+            } animation: { _ in .easeInOut(duration: 0.5) }
+            .sensoryFeedback(.warning, trigger: mucho) { _, ahora in ahora }
+
+            if let limite {
+                senal(limite)
+                    .transition(.scale(scale: 0.7).combined(with: .opacity))
+            }
         }
-        .frame(width: 62, height: 62)
-        .vidrio(Circle())
-        .animation(.snappy, value: Int(valor.rounded()))
+        .animation(.snappy, value: valor)
+        .animation(.snappy, value: mucho)
+        .animation(.snappy, value: limite)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Velocidad \(Int(valor.rounded())) \(millas ? "millas por hora" : "kilómetros por hora")")
+        .accessibilityLabel(etiqueta(valor, limite: limite, mucho: mucho))
+    }
+
+    /// Señal de velocidad máxima.
+    @ViewBuilder
+    private func senal(_ limite: Int) -> some View {
+        if millas {
+            // EE. UU.: rectángulo blanco con borde negro, «LÍMITE» arriba y la cifra grande.
+            VStack(spacing: 0) {
+                Text("LÍMITE")
+                    .font(.system(size: 8.5, weight: .heavy))
+                    .tracking(0.4)
+                Text("\(limite)")
+                    .font(.system(size: 24, weight: .bold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+            }
+            .foregroundStyle(.black)
+            .frame(width: 46, height: 54)
+            .background(.white, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .strokeBorder(.black, lineWidth: 1.8)
+                    .padding(2.5)
+            }
+            .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+        } else {
+            // Resto del mundo: círculo blanco con aro rojo.
+            Text("\(limite)")
+                .font(.system(size: 20, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(.black)
+                .frame(width: 50, height: 50)
+                .background(.white, in: Circle())
+                .overlay(Circle().strokeBorder(Color.red, lineWidth: 5.5))
+                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+        }
+    }
+
+    private func etiqueta(_ valor: Int, limite: Int?, mucho: Bool) -> String {
+        let unidad = millas ? "millas por hora" : "kilómetros por hora"
+        var t = "Velocidad \(valor) \(unidad)"
+        if let limite { t += ". Límite \(limite)" }
+        if mucho { t += ". Vas por encima del límite" }
+        return t
     }
 }

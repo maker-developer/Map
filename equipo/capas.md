@@ -92,3 +92,10 @@ Fuente: batimetría de NOAA (Biscayne Bay y costa). Polígonos por banda, simpli
 ### `agua`: nombres
 
 Que `name` venga relleno al menos en: Biscayne Bay, Atlantic Ocean, Miami River, Intracoastal Waterway, Little River, Snake Creek, lagos grandes. Si la fuente no lo trae, una capa de puntos `agua-nombres` con `name` y, para ríos, líneas `agua-ejes` con `name` (para el texto curvo).
+
+## Velocidad máxima en `calles` (pedido de Claude para la app)
+
+- Propiedad **`vmax`** en cada tramo de `calles`: velocidad máxima señalizada en **mph**, número entero (25, 30, 35, 45…). Sin dato → no poner la propiedad (no 0).
+- Si un tramo tiene límites distintos por sentido, partir el tramo o usar el más bajo.
+- Debe estar a **zoom 16** (el app lee `base.pmtiles` a z16 para saber el límite de la calle por la que vas). También se acepta `maxspeed` con el mismo formato.
+- Uso en el app: debajo de la velocidad al navegar sale la señal de límite; si vas 5 mph o más por encima, la burbuja se pone roja y late.
