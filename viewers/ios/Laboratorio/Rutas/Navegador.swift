@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import AVFoundation
+import UIKit
 import Observation
 
 /// Lo que pasa entre buscar un sitio y llegar, como en Apple Maps y Google Maps:
@@ -16,7 +17,10 @@ import Observation
 final class Navegador {
     enum Fase: Equatable { case libre, lugar, ruta, navegando }
 
-    private(set) var fase: Fase = .libre
+    private(set) var fase: Fase = .libre {
+        // Navegando, la pantalla no se apaga sola (si se bloquea, la navegación se detiene).
+        didSet { UIApplication.shared.isIdleTimerDisabled = fase == .navegando }
+    }
     private(set) var destino: Lugar?
     /// nil = «Mi ubicación».
     private(set) var origen: Lugar?
@@ -65,7 +69,11 @@ final class Navegador {
     private var indiceTrazado = 0
     /// Hasta qué vértice del trazado ya recorriste (lo de atrás se pinta gris claro).
     private(set) var indiceRecorrido = 0
-    private let hablador = AVSpeechSynthesizer()
+    private let hablador: AVSpeechSynthesizer = {
+        let h = AVSpeechSynthesizer()
+        h.delegate = VozDelegado.compartido
+        return h
+    }()
 
     var rutaElegida: Ruta? { rutas.indices.contains(elegida) ? rutas[elegida] : nil }
     var pasoSiguiente: Paso? {
@@ -410,6 +418,20 @@ final class Navegador {
         let frase = AVSpeechUtterance(string: texto)
         frase.voice = AVSpeechSynthesisVoice(language: "es-US") ?? AVSpeechSynthesisVoice(language: "es-ES")
         frase.rate = AVSpeechUtteranceDefaultSpeechRate * 1.02
+        // Que se oiga aunque el iPhone esté en silencio y que baje la música mientras habla.
+        let sesion = AVAudioSession.sharedInstance()
+        try? sesion.setCategory(.playback, mode: .voicePrompt, options: [.duckOthers, .interruptSpokenAudioAndMixWithOthers])
+        try? sesion.setActive(true)
         hablador.speak(frase)
+    }
+}
+
+/// Al terminar de hablar, devuelve el volumen a la música o el pódcast.
+private final class VozDelegado: NSObject, AVSpeechSynthesizerDelegate {
+    static let compartido = VozDelegado()
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        guard !synthesizer.isSpeaking else { return }
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
