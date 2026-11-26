@@ -224,7 +224,7 @@ struct MapaPrincipal: View {
             }
             .accessibilityLabel("Capas del mapa")
 
-            Divider().frame(width: 28)
+            Rectangle().fill(Color.primary.opacity(0.12)).frame(width: 26, height: 0.5)
 
             Button {
                 withAnimation(.snappy) { vista3D.toggle() }
@@ -238,13 +238,13 @@ struct MapaPrincipal: View {
             .buttonStyle(.plain)
             .accessibilityLabel(vista3D ? "Ver en 2D" : "Ver en 3D")
 
-            Divider().frame(width: 28)
+            Rectangle().fill(Color.primary.opacity(0.12)).frame(width: 26, height: 0.5)
 
             Button {
                 centrarEnMi += 1
             } label: {
-                Icono(.ubicacion, tamano: 19)
-                    .foregroundStyle(Color.accentColor)
+                Icono(.navegar, tamano: 19)
+                    .foregroundStyle(Color.primary)
                     .frame(width: 48, height: 46)
                     .contentShape(Rectangle())
             }

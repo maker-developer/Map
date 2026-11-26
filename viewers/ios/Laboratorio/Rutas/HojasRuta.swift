@@ -29,7 +29,7 @@ struct HojaLugar: View {
                         if ficha == nil { detallesBasicos(lugar) }
                     }
                     // La hoja abre a la altura de esta parte (más el asa y los márgenes).
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { altura = $0 + 46 }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { altura = $0 + 46 + Self.altoBarra }
 
                     if let ficha {
                         if !ficha.fotos.isEmpty { fotos(ficha.fotos) }
@@ -45,9 +45,11 @@ struct HojaLugar: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
-                .padding(.bottom, 28)
+                .padding(.bottom, 28 + Self.altoBarra)
             }
             .scrollBounceBehavior(.basedOnSize)
+            // Barra flotante de vidrio, como la de Apple Maps: guardar, compartir, Casa y Trabajo.
+            .overlay(alignment: .bottom) { barraFlotante(lugar).padding(.bottom, 10) }
             .scrollIndicators(.hidden)
             .sensoryFeedback(.success, trigger: copiado)
             .animation(.snappy, value: navegador.duracionPorModo.count)
@@ -71,7 +73,6 @@ struct HojaLugar: View {
                     .lineLimit(2)
             }
             Spacer(minLength: 0)
-            masMenu(lugar)
             BotonCerrarHoja { navegador.cerrar() }
         }
     }
@@ -85,31 +86,6 @@ struct HojaLugar: View {
         return partes.isEmpty ? (lugar.subtitulo.isEmpty ? "Lugar" : lugar.subtitulo) : partes.joined(separator: " · ")
     }
 
-    private func masMenu(_ lugar: Lugar) -> some View {
-        Menu {
-            Button("Abrir en Apple Maps") { abrirURL(Self.enlace(lugar)) }
-            Button("Abrir en Google Maps") {
-                abrirURL(URL(string: "https://www.google.com/maps/search/?api=1&query=\(lugar.coordenada.latitude),\(lugar.coordenada.longitude)")!)
-            }
-            Button("Abrir en Waze") {
-                abrirURL(URL(string: "https://waze.com/ul?ll=\(lugar.coordenada.latitude),\(lugar.coordenada.longitude)&navigate=yes")!)
-            }
-            Divider()
-            Button("Guardar como Casa") { navegador.favoritos.ponerCasa(lugar) }
-            Button("Guardar como Trabajo") { navegador.favoritos.ponerTrabajo(lugar) }
-            Divider()
-            Button("Copiar dirección") { copiar(Self.direccion(lugar).replacingOccurrences(of: "\n", with: ", ")) }
-            Button("Copiar coordenadas") { copiar(Self.coordenadas(lugar)) }
-        } label: {
-            Icono(.mas, tamano: 18)
-                .foregroundStyle(.secondary)
-                .frame(width: 30, height: 30)
-                .background(Color.primary.opacity(0.08), in: Circle())
-                .contentShape(Circle())
-        }
-        .accessibilityLabel("Más opciones")
-    }
-
     // MARK: Baldosas de acción
 
     private struct Accion: Identifiable {
@@ -120,10 +96,8 @@ struct HojaLugar: View {
         var hacer: () -> Void
     }
 
-    /// Hasta cuatro baldosas iguales: la de la ruta en azul lleno, las demás en azul suave.
+    /// Hasta cuatro baldosas iguales: la de la ruta en azul lleno; Llamar, Sitio web y Correo en azul suave.
     private func baldosas(_ lugar: Lugar, _ ficha: FichaLugar?) -> some View {
-        let favoritos = navegador.favoritos
-        let guardado = favoritos.esGuardado(lugar)
         var lista: [Accion] = []
         if let tel = ficha?.telefonos.first.flatMap(Self.urlTelefono) {
             lista.append(Accion(id: "llamar", icono: .telefono, titulo: "Llamar") { abrirURL(tel) })
@@ -131,10 +105,9 @@ struct HojaLugar: View {
         if let web = ficha?.webs.first {
             lista.append(Accion(id: "web", icono: .web, titulo: "Sitio web") { abrirURL(web) })
         }
-        lista.append(Accion(id: "guardar", icono: guardado ? .guardado : .guardar, titulo: guardado ? "Guardado" : "Guardar") {
-            favoritos.alternarGuardado(lugar)
-        })
-        let quedan = 3 - lista.count
+        if let correo = ficha?.correo.flatMap({ URL(string: "mailto:\($0)") }) {
+            lista.append(Accion(id: "correo", icono: .correo, titulo: "Correo") { abrirURL(correo) })
+        }
 
         return HStack(spacing: 8) {
             Button { navegador.comoLlegar() } label: {
@@ -164,16 +137,53 @@ struct HojaLugar: View {
                 Button(action: accion.hacer) { baldosa(accion.icono, accion.titulo) }
                     .buttonStyle(.presionable)
             }
-            .sensoryFeedback(.success, trigger: guardado)
-
-            if quedan > 0 {
-                ShareLink(item: Self.enlace(lugar), subject: Text(lugar.nombre),
-                          message: Text([lugar.nombre, Self.direccion(lugar)].filter { !$0.isEmpty }.joined(separator: "\n"))) {
-                    baldosa(.compartir, "Compartir")
-                }
-                .buttonStyle(.presionable)
-            }
         }
+    }
+
+    // MARK: Barra flotante
+
+    static let altoBarra: CGFloat = 64
+
+    /// Cápsula de Liquid Glass flotando abajo: Guardar, Compartir, Casa y Trabajo.
+    private func barraFlotante(_ lugar: Lugar) -> some View {
+        let favoritos = navegador.favoritos
+        let guardado = favoritos.esGuardado(lugar)
+        let esCasa = favoritos.casa?.esElMismo(que: lugar) == true
+        let esTrabajo = favoritos.trabajo?.esElMismo(que: lugar) == true
+        return HStack(spacing: 4) {
+            botonBarra(guardado ? .guardado : .guardar, activo: guardado, guardado ? "Quitar de guardados" : "Guardar") {
+                favoritos.alternarGuardado(lugar)
+            }
+            ShareLink(item: Self.enlace(lugar), subject: Text(lugar.nombre),
+                      message: Text([lugar.nombre, Self.direccion(lugar)].filter { !$0.isEmpty }.joined(separator: "\n"))) {
+                iconoBarra(.compartir, activo: false)
+            }
+            .buttonStyle(.presionable)
+            .accessibilityLabel("Compartir")
+            botonBarra(.casa, activo: esCasa, "Guardar como Casa") { favoritos.ponerCasa(lugar) }
+            botonBarra(.trabajo, activo: esTrabajo, "Guardar como Trabajo") { favoritos.ponerTrabajo(lugar) }
+        }
+        .padding(.horizontal, 8)
+        .frame(height: 54)
+        .vidrio(Capsule(), interactivo: true)
+        .sensoryFeedback(.success, trigger: guardado)
+        .sensoryFeedback(.success, trigger: esCasa)
+        .sensoryFeedback(.success, trigger: esTrabajo)
+    }
+
+    private func botonBarra(_ icono: Lc, activo: Bool, _ etiqueta: String, accion: @escaping () -> Void) -> some View {
+        Button(action: accion) { iconoBarra(icono, activo: activo) }
+            .buttonStyle(.presionable)
+            .accessibilityLabel(etiqueta)
+            .accessibilityAddTraits(activo ? .isSelected : [])
+    }
+
+    private func iconoBarra(_ icono: Lc, activo: Bool) -> some View {
+        Icono(icono, tamano: 21)
+            .foregroundStyle(activo ? Color.blue : Color.primary)
+            .frame(width: 56, height: 46)
+            .contentShape(Capsule())
+            .contentTransition(.opacity)
     }
 
     private func baldosa(_ icono: Lc, _ titulo: String) -> some View {
@@ -404,7 +414,7 @@ struct HojaLugar: View {
         if !direccion.isEmpty {
             filas.append(AnyView(fila("Dirección", direccion, copiable: true)))
         }
-        // Las coordenadas de un negocio no hacen falta a la vista: quedan en «···» › Copiar coordenadas.
+        // Las coordenadas de un negocio no hacen falta a la vista.
 
         return VStack(alignment: .leading, spacing: 10) {
             seccion("Detalles")
@@ -656,10 +666,11 @@ struct HojaRuta: View {
             } label: {
                 Icono(.invertir, tamano: 16)
                     .foregroundStyle(Color.primary)
-                    .frame(width: 36, height: 36)
-                    .background(Color(uiColor: .tertiarySystemFill), in: Circle())
+                    .frame(width: 38, height: 38)
+                    .contentShape(Circle())
             }
-            .buttonStyle(.presionable)
+            .buttonStyle(.plain)
+            .vidrio(Circle(), interactivo: true)
             .accessibilityLabel("Invertir origen y destino")
             BotonCerrarHoja { navegador.cerrar() }
         }
@@ -1109,12 +1120,14 @@ struct BotonCerrarHoja: View {
 
     var body: some View {
         Button(action: accion) {
-            Icono(.cerrar, tamano: 15)
-                .foregroundStyle(.secondary)
-                .frame(width: 32, height: 32)
-                .background(Color(uiColor: .tertiarySystemFill), in: Circle())
+            Icono(.cerrar, tamano: 16)
+                .foregroundStyle(Color.primary)
+                .frame(width: 38, height: 38)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        // Liquid Glass nativo (iOS 26), como la cruz de las fichas de Apple Maps.
+        .vidrio(Circle(), interactivo: true)
         .accessibilityLabel("Cerrar")
     }
 }

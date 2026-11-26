@@ -203,11 +203,13 @@ struct FichaTocado: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: cerrar) {
-                Icono(.cerrar, tamano: 16)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 30, height: 30)
+                Icono(.cerrar, tamano: 15)
+                    .foregroundStyle(Color.primary)
+                    .frame(width: 34, height: 34)
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
+            .vidrio(Circle(), interactivo: true)
             .accessibilityLabel("Cerrar")
         }
         .padding(16)
