@@ -19,6 +19,13 @@ export const clase = ['coalesce', ['get', 'clase'],
     '4', 'colectora', '5', 'local', '9', 'peatonal', 'servicio']];
 
 const esClase = valores => ['in', clase, ['literal', valores]];
+
+// Tipo de escudo: `red` de Codex o, si no viene, deducido del número de la vía.
+const red = ['coalesce', ['get', 'red'], ['match', ['coalesce', ['get', 'ref'], ''],
+  ['I-75', 'I-95', 'I-195', 'I-395', 'I-595'], 'I',
+  ['US-1', 'US-27', 'US-41', 'US-441'], 'US',
+  ['Turnpike', 'FL Turnpike', 'HEFT'], 'TP',
+  '', 'otro', 'SR']];
 const noTunel = ['!=', ['get', 'tunel'], true];
 const noPuente = ['!=', ['get', 'puente'], true];
 const esPuente = ['==', ['get', 'puente'], true];
@@ -109,12 +116,12 @@ function nombres(p, r) {
     { id: 'escudos', type: 'symbol', source: 'base', 'source-layer': 'calles', minzoom: 9,
       filter: ['all', ['has', 'ref'], ['!=', ['get', 'ref'], ''], esClase(['autopista', 'principal'])],
       layout: { 'symbol-placement': 'line', 'symbol-spacing': ['interpolate', ['linear'], ['zoom'], 9, 260, 15, 520],
-        'icon-image': ['concat', 'escudo-', ['coalesce', ['get', 'red'], 'otro']],
+        'icon-image': ['concat', 'escudo-', red],
         'icon-text-fit': 'both', 'icon-text-fit-padding': [2, 5, 2, 5],
         'icon-rotation-alignment': 'viewport', 'text-rotation-alignment': 'viewport',
         'text-field': ['get', 'ref'], 'text-font': ['literal', ['DMSans-SemiBold']], 'text-size': 10.5,
         'symbol-sort-key': 0 },
-      paint: { 'text-color': ['match', ['get', 'red'], ['I', 'TP'], '#ffffff', '#1d2421'] } },
+      paint: { 'text-color': ['match', red, ['I', 'TP'], '#ffffff', '#1d2421'] } },
     { id: 'agua-ejes', type: 'symbol', source: 'base', 'source-layer': 'agua-ejes', minzoom: 12,
       layout: { 'symbol-placement': 'line', 'symbol-spacing': 320, 'text-field': ['get', 'name'],
         'text-font': ['literal', ['DMSans-Italic']], 'text-size': tamanoAgua, 'text-letter-spacing': .08, 'text-max-angle': 30 },

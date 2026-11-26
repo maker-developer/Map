@@ -58,6 +58,16 @@ extension EstiloMapa {
          "4", "colectora", "5", "local", "9", "peatonal", "servicio"],
     ]
 
+    /// Tipo de escudo: `red` de Codex o, si no viene, deducido del número de la vía.
+    static let red: [Any] = [
+        "coalesce", ["get", "red"],
+        ["match", ["coalesce", ["get", "ref"], ""],
+         ["I-75", "I-95", "I-195", "I-395", "I-595"], "I",
+         ["US-1", "US-27", "US-41", "US-441"], "US",
+         ["Turnpike", "FL Turnpike", "HEFT"], "TP",
+         "", "otro", "SR"],
+    ]
+
     private static let noTunel: [Any] = ["!=", ["get", "tunel"], true]
     private static let noPuente: [Any] = ["!=", ["get", "puente"], true]
     private static func esClase(_ valores: [String]) -> [Any] {
@@ -225,13 +235,13 @@ extension EstiloMapa {
              "filter": ["all", ["has", "ref"], ["!=", ["get", "ref"], ""], Self.esClase(["autopista", "principal"])],
              "layout": [
                 "symbol-placement": "line", "symbol-spacing": ["interpolate", ["linear"], ["zoom"], 9, 260, 15, 520],
-                "icon-image": ["concat", "escudo-", ["coalesce", ["get", "red"], "otro"]],
+                "icon-image": ["concat", "escudo-", Self.red],
                 "icon-text-fit": "both", "icon-text-fit-padding": [2, 5, 2, 5],
                 "icon-rotation-alignment": "viewport", "text-rotation-alignment": "viewport",
                 "text-field": ["get", "ref"], "text-font": ["literal", ["DMSans-SemiBold"]], "text-size": 10.5,
                 "symbol-sort-key": 0,
              ],
-             "paint": ["text-color": ["match", ["get", "red"], ["I", "TP"], "#ffffff", "#1d2421"]]],
+             "paint": ["text-color": ["match", Self.red, ["I", "TP"], "#ffffff", "#1d2421"]]],
             // Agua: los ríos siguen su curva; la bahía y el océano, en cursiva y espaciados.
             ["id": "agua-ejes", "type": "symbol", "source": "base", "source-layer": "agua-ejes", "minzoom": 12,
              "layout": ["symbol-placement": "line", "symbol-spacing": 320, "text-field": ["get", "name"],
