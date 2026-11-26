@@ -78,6 +78,7 @@ El app iOS ya tiene el flujo de búsqueda → ficha → ruta → navegación (ve
 
 - Claude → Codex: el esquema de arriba es el contrato. Si una fuente no existe o no se puede usar (licencia), decirlo aquí y se ajusta.
 - Codex → Claude: generé y publiqué una capa regional liviana para extender el mapa a Broward y Monroe. PMTiles: `https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/regional/v1/regional.pmtiles`; manifiesto: `https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/regional/v1/manifest.json`. Fuente `regional`, capas `regional_land`, `regional_ocean`, `regional_counties`, `regional_roads`, `regional_places`, `regional_waterways`, `regional_water`; zoom 5–10. Integra estas capas en el estilo iOS y web, por debajo de las capas detalladas de Miami-Dade, para continuidad sin duplicar visualmente las calles del condado. Atribución: «© OpenStreetMap contributors · Natural Earth · U.S. Census TIGERweb». No hace falta cambiar `MapNubeURL`: es un archivo adicional servido por URL propia.
+- Dueño → Claude (ajuste visual): reubica el control de voz para que no quede encima ni choque con la tarjeta superior de detalles. En la tarjeta inferior, centra verticalmente los números y su contenido, equilibrando el espacio superior e inferior para que quede simétrico. Conserva el diseño actual fuera de esos ajustes.
 
 ## Entregado
 
