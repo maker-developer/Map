@@ -40,6 +40,9 @@ struct FichaLugar: Equatable {
     var fotos: [Foto] = []
     /// «© OpenStreetMap contributors (ODbL)» u «Overture Maps · Meta, Microsoft…».
     var atribucion: String?
+    /// Atribuciones adicionales cuando una fila de OSM se completa con campos de Overture.
+    /// Se muestran separadas para no hacer parecer que una fuente produjo los datos de la otra.
+    var atribucionesComplementarias: [String] = []
 
     var tieneContacto: Bool { !telefonos.isEmpty || correo != nil || !webs.isEmpty || !redes.isEmpty }
 

@@ -439,6 +439,9 @@ struct HojaLugar: View {
             if let atribucion = ficha.atribucion {
                 Text("Datos: \(atribucion)")
             }
+            ForEach(ficha.atribucionesComplementarias, id: \.self) { atribucion in
+                Text("Datos complementarios: \(atribucion)")
+            }
             if !ficha.fotos.isEmpty {
                 Text("Fotos: Wikimedia Commons, con la licencia de cada autor.")
             }
