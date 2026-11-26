@@ -63,6 +63,8 @@ final class Navegador {
     private var ultimoProgreso = Date.distantPast
     /// Vértice del trazado más cercano la última vez: se busca solo alrededor de él.
     private var indiceTrazado = 0
+    /// Hasta qué vértice del trazado ya recorriste (lo de atrás se pinta gris claro).
+    private(set) var indiceRecorrido = 0
     private let hablador = AVSpeechSynthesizer()
 
     var rutaElegida: Ruta? { rutas.indices.contains(elegida) ? rutas[elegida] : nil }
@@ -212,6 +214,7 @@ final class Navegador {
         anunciado = []
         fueraDeRuta = 0
         indiceTrazado = 0
+        indiceRecorrido = 0
         siguiendo = true
         ultimoProgreso = .distantPast
         actualizarProgreso()
@@ -317,12 +320,24 @@ final class Navegador {
         // Zoom según la velocidad: más lejos en autopista, más cerca al llegar a un giro.
         zoomNavegacion = Self.zoom(velocidad: aqui.speed, distanciaAlGiro: distancia, modo: modo)
 
-        // Llegada: última maniobra cerca.
-        if siguiente == nil || (siguiente?.icono == .bandera && (distancia ?? .infinity) < modo.radioManiobra * 1.5) {
+        // Llegada automática: la última maniobra cerca, o ya junto al destino (aunque no pases
+        // justo por el punto final, p. ej. si aparcas al lado).
+        let alDestino = destino.map {
+            aqui.distance(from: CLLocation(latitude: $0.coordenada.latitude, longitude: $0.coordenada.longitude))
+        } ?? .infinity
+        if siguiente == nil
+            || (siguiente?.icono == .bandera && (distancia ?? .infinity) < modo.radioManiobra * 1.5)
+            || alDestino < max(modo.radioManiobra * 1.5, 30) {
             if !llegaste {
                 llegaste = true
                 horaLlegada = Date()
+                restante = (0, 0)
                 decir("Has llegado a \(destino?.nombre ?? "tu destino")")
+                // Si no tocas nada, la ruta se cierra sola al minuto (como Apple Maps).
+                Task {
+                    try? await Task.sleep(for: .seconds(60))
+                    if llegaste, fase == .navegando { cerrar() }
+                }
             }
             return
         }
@@ -347,6 +362,7 @@ final class Navegador {
                 await calcularTodos()
                 pasoActual = 0
                 indiceTrazado = 0
+                indiceRecorrido = 0
                 anunciado = []
             }
         }
@@ -366,6 +382,11 @@ final class Navegador {
             if d < minima { minima = d; mejor = i }
         }
         indiceTrazado = mejor
+        // Lo recorrido solo avanza (y se redibuja cada pocos vértices para no cargar el mapa).
+        if mejor > indiceRecorrido + 2 {
+            indiceRecorrido = mejor
+            versionRutas += 1
+        }
         return minima
     }
 

@@ -452,8 +452,9 @@ struct BannerManiobra: View {
     }
 }
 
-/// Barra de abajo al navegar: llegada, minutos y distancia que faltan, voz y «Finalizar».
-/// Al llegar, la pantalla de llegada: el destino, la hora y «Volver».
+/// Barra de abajo al navegar, como Apple Maps: recogida, solo **llegada · tiempo · distancia**
+/// centradas y en grande (letra del sistema, redondeada); al subirla, «Finalizar», las opciones
+/// y los próximos pasos. Al llegar, la pantalla de llegada.
 struct HojaNavegacion: View {
     let navegador: Navegador
 
@@ -463,61 +464,81 @@ struct HojaNavegacion: View {
                 llegada
             } else {
                 VStack(spacing: 18) {
-                    enCamino
+                    cifras
                     ScrollView {
-                        opciones.padding(.bottom, 24)
+                        VStack(spacing: 14) {
+                            Button {
+                                navegador.finalizar()
+                            } label: {
+                                Text("Finalizar ruta")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity, minHeight: 50)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .buttonBorderShape(.roundedRectangle(radius: 14))
+                            .tint(.red)
+                            opciones
+                        }
+                        .padding(.bottom, 24)
                     }
                     .scrollIndicators(.hidden)
                 }
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 22)
+        .padding(.top, 14)
         .frame(maxHeight: .infinity, alignment: .top)
         .animation(.snappy, value: navegador.llegaste)
         .sensoryFeedback(.success, trigger: navegador.llegaste)
     }
 
-    private var enCamino: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
-                if let restante = navegador.restante {
-                    Text(FormatoRuta.hora(Date().addingTimeInterval(restante.duracion)))
-                        .font(.title2.weight(.bold))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                    Text("\(FormatoRuta.duracion(restante.duracion)) · \(FormatoRuta.distancia(restante.distancia))")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .contentTransition(.numericText(countsDown: true))
-                } else {
-                    Text("Calculando…").font(.headline)
-                }
-            }
-            Spacer(minLength: 0)
-            Button {
-                navegador.voz.toggle()
-            } label: {
-                Icono(navegador.voz ? .vozSi : .vozNo, tamano: 20)
-                    .foregroundStyle(Color.primary)
-                    .frame(width: 46, height: 46)
-            }
-            .buttonStyle(.plain)
-            .vidrio(Circle(), interactivo: true)
-            .sensoryFeedback(.selection, trigger: navegador.voz)
-            .accessibilityLabel(navegador.voz ? "Silenciar voz" : "Activar voz")
-
-            Button("Finalizar") { navegador.finalizar() }
-                .font(.headline)
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
-                .tint(.red)
-                .controlSize(.large)
+    /// Las tres cifras, simétricas: cada una en su tercio, centrada, número grande y unidad debajo.
+    private var cifras: some View {
+        let restante = navegador.restante
+        let llegada = restante.map { Date().addingTimeInterval($0.duracion) }
+        let hora = llegada.map { partir(FormatoRuta.hora($0)) } ?? ("--", "llegada")
+        let tiempo = restante.map { partir(FormatoRuta.duracion($0.duracion)) } ?? ("--", "min")
+        let distancia = restante.map { partir(FormatoRuta.distancia($0.distancia)) } ?? ("--", "")
+        return HStack(spacing: 0) {
+            cifra(hora.0, unidad: hora.1.isEmpty ? "llegada" : hora.1)
+            cifra(tiempo.0, unidad: tiempo.1)
+            cifra(distancia.0, unidad: distancia.1)
         }
+        .frame(height: 64)
     }
 
-    /// Al subir la barra (como Apple Maps): resumen de la ruta, compartir la llegada y los pasos.
+    private func cifra(_ valor: String, unidad: String) -> some View {
+        VStack(spacing: 0) {
+            Text(valor)
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .contentTransition(.numericText())
+            Text(unidad)
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .animation(.snappy, value: valor)
+    }
+
+    /// «1:17 p. m.» → («1:17», «p. m.»); «7 min» → («7», «min»); «2.3 mi» → («2.3», «mi»).
+    private func partir(_ texto: String) -> (String, String) {
+        guard let espacio = texto.firstIndex(where: { $0 == " " || $0 == "\u{202F}" || $0 == "\u{00A0}" }) else {
+            return (texto, "")
+        }
+        let valor = String(texto[..<espacio])
+        let unidad = String(texto[texto.index(after: espacio)...]).trimmingCharacters(in: .whitespaces)
+        // «1 h 5 min»: todo como valor.
+        if unidad.contains("min") && valor.allSatisfy(\.isNumber) && unidad.first?.isNumber == false && unidad != "min" {
+            return (texto, "")
+        }
+        return (valor, unidad)
+    }
+
+    /// Opciones al subir la barra (como Apple Maps): resumen, compartir llegada, voz y los pasos.
     private var opciones: some View {
         VStack(spacing: 14) {
             HStack(spacing: 10) {
@@ -542,6 +563,7 @@ struct HojaNavegacion: View {
                     opcion(navegador.voz ? .vozSi : .vozNo, navegador.voz ? "Voz" : "Sin voz")
                 }
                 .buttonStyle(.plain)
+                .sensoryFeedback(.selection, trigger: navegador.voz)
             }
 
             if let ruta = navegador.rutaElegida {

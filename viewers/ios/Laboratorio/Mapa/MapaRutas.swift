@@ -12,6 +12,8 @@ extension MapaMapLibre.Coordinador {
         static let selFuente = "ruta-sel"
         static let selBorde = "ruta-sel-borde"
         static let selLinea = "ruta-sel-linea"
+        static let hechoFuente = "ruta-hecha"
+        static let hechoLinea = "ruta-hecha-linea"
         static let etaFuente = "rutas-eta"
         static let etaCapa = "rutas-eta-texto"
     }
@@ -27,6 +29,8 @@ extension MapaMapLibre.Coordinador {
         let alt = MLNShapeSource(identifier: ID.altFuente, shape: nil, options: nil)
         let sel = MLNShapeSource(identifier: ID.selFuente, shape: nil, options: nil)
         let eta = MLNShapeSource(identifier: ID.etaFuente, shape: nil, options: nil)
+        let hecho = MLNShapeSource(identifier: ID.hechoFuente, shape: nil, options: nil)
+        estilo.addSource(hecho)
         estilo.addSource(alt)
         estilo.addSource(sel)
         estilo.addSource(eta)
@@ -40,6 +44,8 @@ extension MapaMapLibre.Coordinador {
             return capa
         }
         let capas = [
+            // Lo ya recorrido al navegar: gris claro, debajo de lo que falta.
+            linea(ID.hechoLinea, hecho, color: UIColor(red: 0.66, green: 0.72, blue: 0.80, alpha: 0.9), ancho: 7),
             linea(ID.altBorde, alt, color: UIColor(white: 1, alpha: 0.95), ancho: 10),
             linea(ID.altLinea, alt, color: UIColor(red: 0.62, green: 0.68, blue: 0.75, alpha: 1), ancho: 6.5),
             linea(ID.selBorde, sel, color: UIColor(red: 0.07, green: 0.33, blue: 0.78, alpha: 1), ancho: 12),
@@ -74,8 +80,19 @@ extension MapaMapLibre.Coordinador {
         var alternativas: [MLNPolylineFeature] = []
         var seleccion: [MLNPolylineFeature] = []
         var etiquetas: [MLNPointFeature] = []
+        var hecho: [MLNPolylineFeature] = []
         for (i, ruta) in rutas.enumerated() where ruta.coordenadas.count > 1 {
-            let linea = MLNPolylineFeature(coordinates: ruta.coordenadas, count: UInt(ruta.coordenadas.count))
+            var tramo = ruta.coordenadas
+            // Navegando: lo recorrido va aparte (gris claro) y en azul solo lo que falta.
+            if navegador.fase == .navegando, i == elegida {
+                let corte = min(navegador.indiceRecorrido, tramo.count - 2)
+                if corte > 0 {
+                    let atras = Array(tramo[0...corte])
+                    hecho.append(MLNPolylineFeature(coordinates: atras, count: UInt(atras.count)))
+                    tramo = Array(tramo[corte...])
+                }
+            }
+            let linea = MLNPolylineFeature(coordinates: tramo, count: UInt(tramo.count))
             linea.attributes = ["indice": i]
             if i == elegida { seleccion.append(linea) } else { alternativas.append(linea) }
             // Durante la navegación no hacen falta los tiempos encima.
@@ -92,6 +109,7 @@ extension MapaMapLibre.Coordinador {
         (estilo.source(withIdentifier: ID.altFuente) as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: alternativas)
         (estilo.source(withIdentifier: ID.selFuente) as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: seleccion)
         (estilo.source(withIdentifier: ID.etaFuente) as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: etiquetas)
+        (estilo.source(withIdentifier: ID.hechoFuente) as? MLNShapeSource)?.shape = MLNShapeCollectionFeature(shapes: hecho)
 
         // Línea a pie: puntitos, como en Apple Maps.
         if let linea = estilo.layer(withIdentifier: ID.selLinea) as? MLNLineStyleLayer {

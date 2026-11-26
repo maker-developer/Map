@@ -136,6 +136,8 @@ struct MapaMapLibre: UIViewRepresentable {
     var margenBrujula: CGPoint? = nil
     /// Búsqueda, rutas y navegación (solo en el mapa principal).
     var navegador: Navegador? = nil
+    /// Brújula de vidrio propia (si la hay, se esconde la de MapLibre).
+    var brujula: Brujula? = nil
 
     func makeCoordinator() -> Coordinador { Coordinador(self) }
 
@@ -155,6 +157,7 @@ struct MapaMapLibre: UIViewRepresentable {
         mapa.showsUserLocation = true
         mapa.compassViewPosition = .topRight
         if let margenBrujula { mapa.compassViewMargins = margenBrujula }
+        if brujula != nil { mapa.compassView.isHidden = true }
         mapa.minimumZoomLevel = 7
         mapa.maximumZoomLevel = 20
         mapa.setCenter(zona.centro, zoomLevel: zona.zoom, direction: zona.rumbo, animated: false)
@@ -231,6 +234,12 @@ struct MapaMapLibre: UIViewRepresentable {
             }
         }
 
+        // Tocar la brújula: el mapa vuelve al norte (navegando, la cámara sigue tu rumbo).
+        if let brujula, brujula.pedirNorte != c.pedirNorte {
+            c.pedirNorte = brujula.pedirNorte
+            if navegador?.fase != .navegando { mapa.setDirection(0, animated: true) }
+        }
+
         if centrarEnMi != c.centrarEnMi {
             c.centrarEnMi = centrarEnMi
             if let aqui = mapa.userLocation?.location?.coordinate, CLLocationCoordinate2DIsValid(aqui) {
@@ -255,6 +264,7 @@ struct MapaMapLibre: UIViewRepresentable {
         var pin: MLNPointAnnotation?
         var pinDestinoID: UUID?
         var versionCentrar = 0
+        var pedirNorte = 0
         var zoomAplicado: Double = 0
         /// Mientras el propio app mueve la cámara, no cuenta como «el usuario movió el mapa».
         var ignorarCambioDeSeguimiento = false
@@ -350,6 +360,15 @@ struct MapaMapLibre: UIViewRepresentable {
                 prepararCapasRuta(style)
                 dibujarRutas(en: mapView)
             }
+        }
+
+        /// El rumbo del mapa para la brújula de vidrio (solo si cambia lo suficiente).
+        func mapViewRegionIsChanging(_ mapView: MLNMapView) { avisarRumbo(mapView) }
+        func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) { avisarRumbo(mapView) }
+
+        private func avisarRumbo(_ mapa: MLNMapView) {
+            guard let brujula = padre.brujula, abs(brujula.rumbo - mapa.direction) > 0.5 else { return }
+            brujula.rumbo = mapa.direction
         }
 
         func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {

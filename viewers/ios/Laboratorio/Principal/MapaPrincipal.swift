@@ -21,10 +21,12 @@ struct MapaPrincipal: View {
     @State private var listo = false
     /// Búsqueda, ficha del lugar, rutas y navegación (como Apple Maps y Google Maps).
     @State private var navegador = Navegador()
+    /// Brújula de vidrio (gira con el mapa; se esconde mirando al norte).
+    @State private var brujula = Brujula()
 
     /// Alturas de la hoja según lo que se está haciendo.
     private static let alturaLugar: CGFloat = 270
-    private static let alturaNavegacion: CGFloat = 120
+    private static let alturaNavegacion: CGFloat = 100
     private var alturas: Set<PresentationDetent> {
         switch navegador.fase {
         case .libre: [.height(HojaBusqueda.alturaMinima), .height(HojaBusqueda.alturaFicha), .medium, .large]
@@ -49,18 +51,27 @@ struct MapaPrincipal: View {
                     repetirVuelo: repetirVuelo,
                     // Debajo de la columna de controles (capas, 2D / 3D, ubicación).
                     margenBrujula: CGPoint(x: 23, y: 172),
-                    navegador: navegador
+                    navegador: navegador,
+                    brujula: brujula
                 )
                 .ignoresSafeArea()
             }
         }
         .overlay(alignment: .topTrailing) {
-            if navegador.fase != .navegando {
-                controles
-                    .padding(.trailing, 16)
-                    .padding(.top, 8)
-                    .transition(.opacity)
+            VStack(spacing: 10) {
+                if navegador.fase != .navegando {
+                    controles
+                        .transition(.opacity)
+                }
+                if brujula.visible {
+                    BotonBrujula(brujula: brujula)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                }
             }
+            .padding(.trailing, 16)
+            // Navegando, la brújula queda debajo del banner.
+            .padding(.top, navegador.fase == .navegando ? 190 : 8)
+            .animation(.snappy, value: brujula.visible)
         }
         // Navegando: el banner de la maniobra arriba (como Apple y Google).
         .overlay(alignment: .top) {
@@ -75,7 +86,7 @@ struct MapaPrincipal: View {
             if navegador.fase == .navegando, navegador.siguiendo, !navegador.llegaste {
                 BurbujaVelocidad(metrosPorSegundo: navegador.velocidad)
                     .padding(.leading, 16)
-                    .padding(.bottom, 150)
+                    .padding(.bottom, 128)
                     .transition(.opacity)
             }
         }
@@ -97,7 +108,7 @@ struct MapaPrincipal: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.leading, 16)
-                .padding(.bottom, 150)
+                .padding(.bottom, 128)
                 .transition(.scale(scale: 0.8).combined(with: .opacity))
             }
         }
