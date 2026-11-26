@@ -67,6 +67,13 @@ Nombres con mayúsculas y minúsculas («SW 8th St», no «SW 8TH ST»). Tamaño
 - [ ] **W5. Búsqueda en la web.** La misma búsqueda en la hoja de la app web, con `sql.js` sobre `busqueda.sqlite` (cargado desde `public/data/` o R2 `v3/`), con el orden que documente Claude en A5. Si el índice pesa demasiado para el navegador, proponer en «Pedidos» un índice web más pequeño (sin direcciones, o por zonas) y Codex lo genera.
 - [ ] **W6. Pruebas de búsqueda.** `npm run probar-busqueda`: las consultas de la lista «Probar» de abajo, con el primer resultado esperado; sale con error si alguna falla.
 
+## Nota: experiencia de rutas ya montada en iOS
+
+El app iOS ya tiene el flujo de búsqueda → ficha → ruta → navegación (ver `viewers/ios/README.md`), con servicios **provisionales** (Photon para buscar, OSRM de FOSSGIS para rutas). Esta ronda sustituye la búsqueda por el índice propio; las rondas 3 y 4, las rutas. El cambio en iOS se hace solo en `viewers/ios/Laboratorio/Rutas/ServiciosRuta.swift`.
+
+- Para **Cursor:** la misma experiencia en la web (W7, opcional en esta ronda): mismas fases y pantallas; los textos de las maniobras en español están en `Rutas/ModelosRuta.swift` (`Maniobra.describir`).
+- Para **Codex:** en la ronda 4, el motor propio debería responder **como OSRM** (`/route/v1/{perfil}/{lon,lat;lon,lat}?alternatives=3&steps=true&geometries=geojson&overview=full`), así el app no cambia.
+
 ## Pedidos entre los dos
 
 - Claude → Codex: el esquema de arriba es el contrato. Si una fuente no existe o no se puede usar (licencia), decirlo aquí y se ajusta.

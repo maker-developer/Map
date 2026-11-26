@@ -134,6 +134,8 @@ struct MapaMapLibre: UIViewRepresentable {
     var repetirVuelo: Int = 0
     /// Margen de la brújula (arriba a la derecha) para que no quede debajo de otros controles.
     var margenBrujula: CGPoint? = nil
+    /// Búsqueda, rutas y navegación (solo en el mapa principal).
+    var navegador: Navegador? = nil
 
     func makeCoordinator() -> Coordinador { Coordinador(self) }
 
@@ -169,6 +171,13 @@ struct MapaMapLibre: UIViewRepresentable {
             toque.require(toFail: gesto)
         }
         mapa.addGestureRecognizer(toque)
+
+        // Mantener pulsado: pin y ficha de ese punto (solo con navegador).
+        if navegador != nil {
+            let mantener = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinador.mantener(_:)))
+            mantener.minimumPressDuration = 0.45
+            mapa.addGestureRecognizer(mantener)
+        }
         return mapa
     }
 
@@ -200,6 +209,23 @@ struct MapaMapLibre: UIViewRepresentable {
             if estilo.edificios3D, mapa.camera.pitch > 0 { c.inclinar(mapa, a: inclinacion) }
         }
 
+        // Rutas, pin, encuadre y cámara de navegación.
+        if let navegador {
+            if navegador.versionRutas != c.versionRutas || navegador.fase != c.faseVista {
+                c.versionRutas = navegador.versionRutas
+                c.dibujarRutas(en: mapa)
+            }
+            if navegador.fase != c.faseVista {
+                c.faseVista = navegador.fase
+                c.aplicarFase(en: mapa)
+                if navegador.fase == .lugar { c.encuadrar(en: mapa) }
+            }
+            if navegador.versionEncuadre != c.versionEncuadre {
+                c.versionEncuadre = navegador.versionEncuadre
+                c.encuadrar(en: mapa)
+            }
+        }
+
         if centrarEnMi != c.centrarEnMi {
             c.centrarEnMi = centrarEnMi
             if let aqui = mapa.userLocation?.location?.coordinate, CLLocationCoordinate2DIsValid(aqui) {
@@ -208,6 +234,7 @@ struct MapaMapLibre: UIViewRepresentable {
         }
     }
 
+    @MainActor
     final class Coordinador: NSObject, MLNMapViewDelegate {
         var padre: MapaMapLibre
         var estilo: EstiloMapa
@@ -216,6 +243,12 @@ struct MapaMapLibre: UIViewRepresentable {
         var centrarEnMi: Int
         var vista3D: Bool?
         var repetirVuelo: Int
+        // Rutas: lo último que se dibujó en el mapa.
+        var versionRutas = -1
+        var versionEncuadre = 0
+        var faseVista: Navegador.Fase = .libre
+        var pin: MLNPointAnnotation?
+        var pinDestinoID: UUID?
 
         init(_ padre: MapaMapLibre) {
             self.vista3D = padre.vista3D
@@ -271,6 +304,8 @@ struct MapaMapLibre: UIViewRepresentable {
         @objc func tocar(_ gesto: UITapGestureRecognizer) {
             guard let mapa = gesto.view as? MLNMapView else { return }
             let punto = gesto.location(in: mapa)
+            // Al planificar, tocar una ruta gris la elige.
+            if tocarRuta(en: punto, mapa: mapa) { return }
             // Primero las paradas (son pequeñas y van encima); luego los edificios.
             if estilo.transporte,
                let parada = mapa.visibleFeatures(at: punto, styleLayerIdentifiers: ["transit-stops"]).first {
@@ -300,6 +335,15 @@ struct MapaMapLibre: UIViewRepresentable {
             padre.medidas.error = nil
             Escudos.registrar(en: style)
             aplicarVisibilidad(mapView)
+            // Las rutas viven en el estilo: tras recargarlo (p. ej. cambio de tema) se vuelven a poner.
+            if padre.navegador != nil {
+                prepararCapasRuta(style)
+                dibujarRutas(en: mapView)
+            }
+        }
+
+        func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {
+            padre.navegador?.actualizar(ubicacion: userLocation?.location)
         }
 
         func mapViewDidFailLoadingMap(_ mapView: MLNMapView, withError error: Error) {

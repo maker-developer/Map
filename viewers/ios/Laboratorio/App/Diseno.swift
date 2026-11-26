@@ -27,6 +27,24 @@ enum Lc: String {
     case brujula = "compass"
     case buscar = "search"
     case ajustes = "settings-2"
+    // Rutas y navegación
+    case coche = "car"
+    case pasos = "footprints"
+    case bici = "bike"
+    case navegar = "navigation"
+    case bandera = "flag"
+    case vuelta = "undo-2"
+    case flechaArriba = "arrow-up"
+    case giroDerecha = "corner-up-right"
+    case giroIzquierda = "corner-up-left"
+    case diagonalDerecha = "arrow-up-right"
+    case diagonalIzquierda = "arrow-up-left"
+    case incorporar = "merge"
+    case rotonda = "rotate-cw"
+    case origen = "circle-dot"
+    case invertir = "arrow-up-down"
+    case vozSi = "volume-2"
+    case vozNo = "volume-x"
 
     var imagen: Image { Image("lc.\(rawValue)") }
 }

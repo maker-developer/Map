@@ -10,6 +10,7 @@ struct HojaBusqueda: View {
 
     @Binding var tocado: ElementoTocado?
     @Binding var hoja: PresentationDetent
+    let navegador: Navegador
     let elegirZona: (Zona) -> Void
 
     @State private var consulta = ""
@@ -33,6 +34,7 @@ struct HojaBusqueda: View {
                             hoja = .height(Self.alturaMinima)
                         }
                     }
+                    lugares
                     explorar
                 }
                 .padding(.horizontal, 16)
@@ -47,6 +49,12 @@ struct HojaBusqueda: View {
         .animation(.easeOut(duration: 0.2), value: recogida)
         .onChange(of: escribiendo) { _, activo in
             if activo { hoja = .large }
+        }
+        // Lugares mientras se escribe (espera un poco entre letras para no saturar el servicio).
+        .task(id: consulta) {
+            try? await Task.sleep(for: .milliseconds(320))
+            guard !Task.isCancelled else { return }
+            await navegador.buscar(consulta)
         }
         .fullScreenCover(isPresented: $verLaboratorio) {
             ListaExperimentos(alCerrar: { verLaboratorio = false })
@@ -105,9 +113,59 @@ struct HojaBusqueda: View {
         return lista.filter { $0.nombre.localizedStandardContains(texto) }
     }
 
+    /// Lugares encontrados (direcciones, sitios): al tocar uno sale su ficha con «Cómo llegar».
+    @ViewBuilder
+    private var lugares: some View {
+        if !consulta.isEmpty, !navegador.resultados.isEmpty || navegador.buscando {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Lugares")
+                        .font(.title3.weight(.semibold))
+                    if navegador.buscando { ProgressView().controlSize(.small) }
+                }
+                .padding(.horizontal, 4)
+                VStack(spacing: 0) {
+                    ForEach(Array(navegador.resultados.enumerated()), id: \.element.id) { indice, lugar in
+                        Button {
+                            escribiendo = false
+                            consulta = ""
+                            navegador.limpiarBusqueda()
+                            navegador.elegir(lugar)
+                        } label: {
+                            HStack(spacing: 12) {
+                                IconoCuadro(icono: .pin, color: .red)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(lugar.nombre)
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                    if !lugar.subtitulo.isEmpty {
+                                        Text(lugar.subtitulo)
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                    }
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        if indice < navegador.resultados.count - 1 {
+                            Divider().padding(.leading, 58)
+                        }
+                    }
+                }
+                .background(Color(uiColor: .secondarySystemGroupedBackground),
+                            in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+        }
+    }
+
     private var explorar: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(consulta.isEmpty ? "Explorar" : "Resultados")
+            Text(consulta.isEmpty ? "Explorar" : "Zonas")
                 .font(.title3.weight(.semibold))
                 .padding(.horizontal, 4)
 
@@ -140,12 +198,12 @@ struct HojaBusqueda: View {
                         in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
             if zonas.isEmpty {
-                Text("Sin resultados. La búsqueda de direcciones y lugares llega pronto.")
+                Text(navegador.resultados.isEmpty && !navegador.buscando ? "Sin resultados." : "")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
             } else {
-                Text("Pronto: direcciones, calles, barrios y lugares públicos del condado.")
+                Text("Mantén pulsado el mapa para poner un pin e ir a ese punto.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)

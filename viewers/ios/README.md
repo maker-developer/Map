@@ -3,7 +3,8 @@
 App nativa de mapas de Miami-Dade con el estilo propio, en SwiftUI, MapLibre Native e íconos Lucide. **Es un mapa normal, como Apple Maps**, y además tiene un **modo laboratorio** (el ícono del matraz junto a la búsqueda) para probar cada mejora antes de pasarla al mapa.
 
 - **Mapa principal:** pantalla completa con el estilo de la ronda 1, apariencia automática (sigue al iPhone) o fija, controles de vidrio arriba a la derecha (capas, 2D / 3D, mi ubicación) y una hoja inferior con la búsqueda. Al tocar un edificio o una parada, su ficha sube en la hoja.
-- **Búsqueda:** por ahora, zonas del condado. Direcciones, calles, barrios y lugares públicos llegan en la ronda 2.
+- **Búsqueda y rutas (como Apple Maps y Google Maps):** al escribir salen lugares; al tocar uno (o **mantener pulsado el mapa**) sale un pin y su ficha con «Cómo llegar» y el tiempo en coche. La pantalla de ruta tiene origen y destino con ⇅, pestañas **Coche / A pie / Bici** con su tiempo, las rutas alternativas a la vez en el mapa (elegida en azul, las demás en gris, se tocan para elegirlas, con su tiempo encima), tarjetas con duración, llegada, distancia, «Más rápida» y «por…», los pasos y **«Ir»**. Navegando: banner con la maniobra, la distancia y la calle (y la siguiente), barra con llegada, minutos y distancia que faltan, voz en español, la cámara te sigue inclinada y **recalcula** si te sales.
+- **Provisional:** la búsqueda usa Photon y las rutas OSRM de FOSSGIS (OpenStreetMap), solo para probar la experiencia. Se cambian por el índice propio (ronda 2) y el motor propio (rondas 3 y 4) tocando solo `Rutas/ServiciosRuta.swift`.
 - **Modo laboratorio:** la lista de experimentos (antes / después, medidas, origen de los mapas).
 - **Mapa:** MapLibre Native para iOS 6.x por Swift Package Manager. Lee los mismos PMTiles que el visor web (`public/data/`) con `pmtiles://file://`, soportado desde MapLibre iOS 6.10.0.
 - **Letras:** DM Sans en formato de glifos de MapLibre (`styles/glifos/`), dentro del app. Funciona sin internet.
@@ -66,6 +67,9 @@ viewers/ios/
   Laboratorio/
     App/                         Entrada del app, íconos Lucide, vidrio y textos
     Principal/                   El mapa normal: MapaPrincipal (mapa y controles) y HojaBusqueda
+    Rutas/                       Búsqueda, ficha del lugar, rutas y navegación: Navegador (fases y lógica),
+                                 HojasRuta (pantallas), ServiciosRuta (Photon y OSRM provisionales), ModelosRuta
+    Mapa/MapaRutas.swift         Rutas en el mapa (azul / gris), tiempos, pin, encuadre y cámara al navegar
     Mapa/EstiloMapa.swift        Estilo del mapa en código (paletas de styles/), escrito como JSON
     Mapa/EstiloRonda1.swift      Ronda 1: calles por clase, puentes, túneles, escudos, arena y agua
     Mapa/Escudos.swift           Escudos de autopista dibujados en código (estirables)

@@ -19,6 +19,20 @@ struct MapaPrincipal: View {
     @State private var centrarEnMi = 0
     @State private var hoja: PresentationDetent = .height(HojaBusqueda.alturaMinima)
     @State private var listo = false
+    /// Búsqueda, ficha del lugar, rutas y navegación (como Apple Maps y Google Maps).
+    @State private var navegador = Navegador()
+
+    /// Alturas de la hoja según lo que se está haciendo.
+    private static let alturaLugar: CGFloat = 270
+    private static let alturaNavegacion: CGFloat = 120
+    private var alturas: Set<PresentationDetent> {
+        switch navegador.fase {
+        case .libre: [.height(HojaBusqueda.alturaMinima), .height(HojaBusqueda.alturaFicha), .medium, .large]
+        case .lugar: [.height(Self.alturaLugar), .medium]
+        case .ruta: [.height(Self.alturaLugar), .medium, .large]
+        case .navegando: [.height(Self.alturaNavegacion)]
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -33,16 +47,29 @@ struct MapaPrincipal: View {
                     vista3D: vista3D,
                     repetirVuelo: repetirVuelo,
                     // Debajo de la columna de controles (capas, 2D / 3D, ubicación).
-                    margenBrujula: CGPoint(x: 23, y: 172)
+                    margenBrujula: CGPoint(x: 23, y: 172),
+                    navegador: navegador
                 )
                 .ignoresSafeArea()
             }
         }
         .overlay(alignment: .topTrailing) {
-            controles
-                .padding(.trailing, 16)
-                .padding(.top, 8)
+            if navegador.fase != .navegando {
+                controles
+                    .padding(.trailing, 16)
+                    .padding(.top, 8)
+                    .transition(.opacity)
+            }
         }
+        // Navegando: el banner de la maniobra arriba (como Apple y Google).
+        .overlay(alignment: .top) {
+            if navegador.fase == .navegando {
+                BannerManiobra(navegador: navegador)
+                    .padding(.top, 4)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: navegador.fase)
         .overlay(alignment: .top) {
             if let error = medidas.error {
                 Text(error)
@@ -55,21 +82,43 @@ struct MapaPrincipal: View {
         }
         // La hoja de búsqueda siempre está, como en Apple Maps; se recoge pero no se cierra.
         .sheet(isPresented: .constant(listo)) {
-            HojaBusqueda(
-                tocado: $tocado,
-                hoja: $hoja,
-                elegirZona: { nueva in
-                    if nueva == zona { repetirVuelo += 1 } else { zona = nueva }
-                    hoja = .height(HojaBusqueda.alturaMinima)
+            Group {
+                switch navegador.fase {
+                case .libre:
+                    HojaBusqueda(
+                        tocado: $tocado,
+                        hoja: $hoja,
+                        navegador: navegador,
+                        elegirZona: { nueva in
+                            if nueva == zona { repetirVuelo += 1 } else { zona = nueva }
+                            hoja = .height(HojaBusqueda.alturaMinima)
+                        }
+                    )
+                case .lugar:
+                    HojaLugar(navegador: navegador)
+                case .ruta:
+                    HojaRuta(navegador: navegador)
+                case .navegando:
+                    HojaNavegacion(navegador: navegador)
                 }
-            )
-            .presentationDetents([.height(HojaBusqueda.alturaMinima), .medium, .large], selection: $hoja)
+            }
+            .presentationDetents(alturas, selection: $hoja)
             .presentationDragIndicator(.visible)
             .presentationBackgroundInteraction(.enabled(upThrough: .medium))
             .interactiveDismissDisabled()
         }
         .onAppear(perform: preparar)
         .onChange(of: vista3D) { _, nuevo in estilo.edificios3D = nuevo }
+        // La hoja se pone a la altura que toca en cada paso (ficha, ruta, navegación).
+        .onChange(of: navegador.fase) { _, fase in
+            switch fase {
+            case .libre: hoja = .height(HojaBusqueda.alturaMinima)
+            case .lugar: hoja = .height(Self.alturaLugar)
+            case .ruta: hoja = .medium
+            case .navegando: hoja = .height(Self.alturaNavegacion)
+            }
+        }
+        .sensoryFeedback(.impact(weight: .light), trigger: navegador.fase)
         .onChange(of: esquema) { aplicarApariencia() }
         .onChange(of: apariencia) { aplicarApariencia() }
         .onChange(of: tocado) { _, nuevo in
