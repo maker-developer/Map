@@ -73,6 +73,10 @@ enum Lc: String {
     case hoja = "leaf"
     case enlace = "link"
     case arroba = "at-sign"
+    case mas = "ellipsis"
+    case efectivo = "banknote"
+    case sinContacto = "nfc"
+    case movil = "smartphone"
 
     var imagen: Image { Image("lc.\(rawValue)") }
 }

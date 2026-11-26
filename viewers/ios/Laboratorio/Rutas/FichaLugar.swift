@@ -66,7 +66,7 @@ struct FichaLugar: Equatable {
         descripcion = texto("description")
 
         let calle = texto("address")
-        let ciudad = [texto("locality"), [texto("region"), texto("postal_code")].compactMap { $0 }.joined(separator: " ")]
+        let ciudad = [texto("locality"), [texto("region").map { $0.replacingOccurrences(of: "US-", with: "") }, texto("postal_code")].compactMap { $0 }.joined(separator: " ")]
             .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
         direccion = [calle, ciudad.isEmpty ? nil : ciudad].compactMap { $0 }.joined(separator: "\n").nilSiVacio
 
@@ -274,6 +274,22 @@ struct Horario: Equatable {
         return tramos.map { "\(Self.hora($0.lowerBound)) – \(Self.hora($0.upperBound))" }.joined(separator: ", ")
     }
 
+    /// Días seguidos con las mismas horas, juntos: «Lunes – Miércoles · 7:00 a. m. – 5:00 a. m.».
+    /// Cada grupo dice si incluye hoy (para resaltarlo).
+    func grupos(hoy: Int = Horario.hoy()) -> [(dias: String, horas: String, hoy: Bool)] {
+        var res: [(dias: String, horas: String, hoy: Bool)] = []
+        var inicio = 0
+        for d in 1...7 {
+            if d == 7 || texto(dia: d) != texto(dia: inicio) {
+                let nombre = d - 1 == inicio ? Self.nombresES[inicio]
+                    : "\(Self.nombresES[inicio]) – \(Self.nombresES[d - 1])"
+                res.append((nombre, texto(dia: inicio), (inicio...(d - 1)).contains(hoy)))
+                inicio = d
+            }
+        }
+        return res
+    }
+
     private static func hora(_ minutos: Int) -> String {
         let fecha = Calendar.current.date(bySettingHour: minutos / 60, minute: minutos % 60, second: 0, of: .now) ?? .now
         return fecha.formatted(date: .omitted, time: .shortened)
@@ -306,9 +322,47 @@ enum Traducciones {
         "real_estate_agent": "Inmobiliaria", "lawyer": "Abogado", "accountant": "Contador",
     ]
 
-    /// «electronics_store» → «Tienda de electrónica» (o «Electronics store» si no está en la lista).
+    /// Cocinas para «x_restaurant» de Overture → «Restaurante x» en español.
+    private static let cocinas: [String: String] = [
+        "latin_american": "latinoamericano", "mexican": "mexicano", "cuban": "cubano", "chinese": "chino",
+        "italian": "italiano", "japanese": "japonés", "thai": "tailandés", "indian": "indio",
+        "american": "americano", "peruvian": "peruano", "colombian": "colombiano", "venezuelan": "venezolano",
+        "spanish": "español", "french": "francés", "greek": "griego", "korean": "coreano",
+        "vietnamese": "vietnamita", "haitian": "haitiano", "caribbean": "caribeño", "mediterranean": "mediterráneo",
+        "middle_eastern": "de Oriente Medio", "argentine": "argentino", "brazilian": "brasileño",
+        "nicaraguan": "nicaragüense", "honduran": "hondureño", "salvadoran": "salvadoreño",
+        "puerto_rican": "puertorriqueño", "dominican": "dominicano", "asian": "asiático",
+        "southern": "sureño", "vegan": "vegano", "vegetarian": "vegetariano", "lebanese": "libanés",
+        "turkish": "turco", "ecuadorian": "ecuatoriano", "guatemalan": "guatemalteco", "jamaican": "jamaicano",
+    ]
+    private static let especiales: [String: String] = [
+        "seafood_restaurant": "Marisquería", "pizza_restaurant": "Pizzería", "burger_restaurant": "Hamburguesería",
+        "taco_restaurant": "Taquería", "sushi_restaurant": "Restaurante de sushi", "steakhouse": "Asador",
+        "breakfast_and_brunch_restaurant": "Desayunos y brunch", "fast_food_restaurant": "Comida rápida",
+        "pharmacy_and_drug_store": "Farmacia", "chicken_restaurant": "Pollos", "sandwich_shop": "Sándwiches",
+        "juice_bar": "Jugos y batidos", "donut_shop": "Donas", "dessert_shop": "Postres",
+        "nail_salon": "Salón de uñas", "barber": "Barbería", "auto_repair": "Taller mecánico",
+        "car_dealer": "Concesionario", "dentist": "Dentista", "doctor": "Médico", "church": "Iglesia",
+        "professional_services": "Servicios profesionales", "beauty_salon": "Salón de belleza",
+        "community_services_non_profits": "Servicios comunitarios", "hotel": "Hotel", "gym": "Gimnasio",
+        "food_truck": "Camión de comida", "bakery": "Panadería", "cafe": "Cafetería", "coffee_shop": "Cafetería",
+        "liquor_store": "Licorería", "gas_station": "Gasolinera", "furniture_store": "Mueblería",
+        "shoe_store": "Zapatería", "jewelry_store": "Joyería", "hardware_store": "Ferretería",
+        "pet_store": "Tienda de mascotas", "flowers_and_gifts_shop": "Floristería", "laundromat": "Lavandería",
+    ]
+
+    /// «latin_american_restaurant» → «Restaurante latinoamericano»; «electronics_store» → «Tienda de electrónica».
     static func categoria(_ c: String) -> String {
-        categorias[c.lowercased()] ?? legible(c)
+        let k = c.lowercased().replacingOccurrences(of: " ", with: "_")
+        if let t = especiales[k] ?? categorias[k] { return t }
+        if k.hasSuffix("_restaurant"), let cocina = cocinas[String(k.dropLast("_restaurant".count))] {
+            return "Restaurante \(cocina)"
+        }
+        if k.hasSuffix("_store") || k.hasSuffix("_shop") {
+            let base = String(k.split(separator: "_").dropLast().joined(separator: " "))
+            return "Tienda de \(base)"
+        }
+        return legible(c)
     }
 
     static func legible(_ c: String) -> String {

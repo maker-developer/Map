@@ -4,40 +4,39 @@ import UIKit
 
 // MARK: - Ficha del lugar
 
-/// Ficha de un sitio, como en Apple Maps. Arriba, lo que se ve al abrirla: nombre, categoría, distancia,
-/// si está abierto ahora y la fila de acciones («Cómo llegar · 7 min» en azul y círculos de vidrio).
-/// Si es un negocio del catálogo (`lugar.ficha`), debajo y al subir la hoja: Llamar / Sitio web / Correo,
-/// fotos con su crédito, descripción, horario de la semana, contacto y redes, servicios, pagos y la fuente.
-/// Cada parte sale solo si hay datos. La hoja abre a la altura de la parte de arriba (`altura`).
+/// Ficha de un sitio. Arriba: nombre, qué es y dónde, con «···» y cerrar en vidrio; una fila de baldosas
+/// iguales (Cómo llegar · 7 min en azul, Llamar, Sitio web, Guardar, Compartir: las que apliquen) y una
+/// franja de datos de un vistazo (horario, distancia, pagos, accesible). Al subir la hoja: fotos con
+/// crédito, «Acerca de», comodidades con ícono, horario por grupos de días con hoy resaltado y los
+/// detalles a dos columnas (teléfono, web, redes con su logo, dirección…). Cada parte sale solo si hay datos.
 struct HojaLugar: View {
     let navegador: Navegador
     @Binding var altura: CGFloat
     @Environment(\.openURL) private var abrirURL
     @State private var copiado = false
-    @State private var semanaAbierta = false
     @State private var descripcionAbierta = false
+    @State private var todasComodidades = false
 
     var body: some View {
         if let lugar = navegador.destino {
             let ficha = lugar.ficha
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 16) {
                         cabecera(lugar, ficha)
-                        acciones(lugar)
+                        baldosas(lugar, ficha)
+                        vistazo(lugar, ficha)
                         if ficha == nil { detallesBasicos(lugar) }
                     }
                     // La hoja abre a la altura de esta parte (más el asa y los márgenes).
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { altura = $0 + 50 }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { altura = $0 + 46 }
 
                     if let ficha {
-                        contactoRapido(ficha)
                         if !ficha.fotos.isEmpty { fotos(ficha.fotos) }
                         if let texto = ficha.descripcion { descripcion(texto) }
-                        if let horario = ficha.horario { semana(horario) }
+                        if !ficha.servicios.isEmpty { comodidades(ficha.servicios) }
+                        if let horario = ficha.horario { semana(horario, cerrado: ficha.cerrado) }
                         detalles(lugar, ficha)
-                        if !ficha.servicios.isEmpty { chips("Servicios", ficha.servicios) }
-                        if !ficha.pagos.isEmpty { chips("Formas de pago", ficha.pagos) }
                         fuente(ficha)
                     }
 
@@ -46,155 +45,219 @@ struct HojaLugar: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 22)
-                .padding(.bottom, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 28)
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
             .sensoryFeedback(.success, trigger: copiado)
             .animation(.snappy, value: navegador.duracionPorModo.count)
-            .animation(.snappy, value: semanaAbierta)
             .animation(.snappy, value: descripcionAbierta)
+            .animation(.snappy, value: todasComodidades)
         }
     }
 
     // MARK: Cabecera
 
     private func cabecera(_ lugar: Lugar, _ ficha: FichaLugar?) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(ficha?.nombre ?? lugar.nombre)
                     .font(.title2.weight(.bold))
                     .fixedSize(horizontal: false, vertical: true)
                     .contentTransition(.opacity)
-                HStack(spacing: 6) {
-                    if let categoria = ficha?.categoria {
-                        Text(categoria).lineLimit(1)
-                        Text("·")
-                    }
-                    if let aqui = navegador.ubicacion {
-                        let metros = aqui.distance(from: .init(latitude: lugar.coordenada.latitude, longitude: lugar.coordenada.longitude))
-                        Text(FormatoRuta.distancia(metros))
-                    }
-                    if ficha?.categoria == nil {
-                        if navegador.ubicacion != nil { Text("·") }
-                        Text(lugar.subtitulo.isEmpty ? "Lugar" : lugar.subtitulo).lineLimit(1)
-                    }
-                }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-                if let ficha {
-                    if ficha.cerrado {
-                        Text("Cerrado permanentemente")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.red)
-                    } else if let estado = ficha.horario?.estado() {
-                        Text(estado.texto)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(estado.abierto ? Color.green : Color.red)
-                    }
-                    if let marca = ficha.marca {
-                        Text(marca).font(.footnote).foregroundStyle(.secondary)
-                    }
-                }
+                Text(Self.queYDonde(lugar, ficha))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
             Spacer(minLength: 0)
+            masMenu(lugar)
             BotonCerrarHoja { navegador.cerrar() }
         }
     }
 
-    // MARK: Acciones
+    /// «Restaurante latinoamericano · Sweetwater» (o el subtítulo de siempre si no es un negocio).
+    private static func queYDonde(_ lugar: Lugar, _ ficha: FichaLugar?) -> String {
+        guard let ficha else { return lugar.subtitulo.isEmpty ? "Lugar" : lugar.subtitulo }
+        let ciudad = ficha.direccion?.split(separator: "\n").dropFirst().first
+            .flatMap { $0.split(separator: ",").first }.map(String.init)
+        let partes = [ficha.categoria, ficha.marca, ciudad].compactMap { $0 }
+        return partes.isEmpty ? (lugar.subtitulo.isEmpty ? "Lugar" : lugar.subtitulo) : partes.joined(separator: " · ")
+    }
 
-    /// La principal en azul y las demás en círculos de vidrio.
-    private func acciones(_ lugar: Lugar) -> some View {
+    private func masMenu(_ lugar: Lugar) -> some View {
+        Menu {
+            Button("Abrir en Apple Maps") { abrirURL(Self.enlace(lugar)) }
+            Button("Abrir en Google Maps") {
+                abrirURL(URL(string: "https://www.google.com/maps/search/?api=1&query=\(lugar.coordenada.latitude),\(lugar.coordenada.longitude)")!)
+            }
+            Button("Abrir en Waze") {
+                abrirURL(URL(string: "https://waze.com/ul?ll=\(lugar.coordenada.latitude),\(lugar.coordenada.longitude)&navigate=yes")!)
+            }
+            Divider()
+            Button("Guardar como Casa") { navegador.favoritos.ponerCasa(lugar) }
+            Button("Guardar como Trabajo") { navegador.favoritos.ponerTrabajo(lugar) }
+            Divider()
+            Button("Copiar dirección") { copiar(Self.direccion(lugar).replacingOccurrences(of: "\n", with: ", ")) }
+            Button("Copiar coordenadas") { copiar(Self.coordenadas(lugar)) }
+        } label: {
+            Icono(.mas, tamano: 18)
+                .foregroundStyle(.secondary)
+                .frame(width: 30, height: 30)
+                .background(Color.primary.opacity(0.08), in: Circle())
+                .contentShape(Circle())
+        }
+        .accessibilityLabel("Más opciones")
+    }
+
+    // MARK: Baldosas de acción
+
+    private struct Accion: Identifiable {
+        let id: String
+        let icono: Lc
+        let titulo: String
+        var principal = false
+        var hacer: () -> Void
+    }
+
+    /// Hasta cuatro baldosas iguales: la de la ruta en azul lleno, las demás en azul suave.
+    private func baldosas(_ lugar: Lugar, _ ficha: FichaLugar?) -> some View {
         let favoritos = navegador.favoritos
         let guardado = favoritos.esGuardado(lugar)
-        return HStack(spacing: 10) {
-            Button {
-                navegador.comoLlegar()
-            } label: {
-                HStack(spacing: 8) {
-                    Icono(navegador.modo.icono, tamano: 18)
-                    Text("Cómo llegar")
-                    if let duracion = navegador.duracionPorModo[navegador.modo] {
-                        Text("· \(FormatoRuta.duracion(duracion))")
-                            .contentTransition(.numericText())
-                    } else if navegador.cargando {
-                        ProgressView().tint(.white).controlSize(.small)
+        var lista: [Accion] = []
+        if let tel = ficha?.telefonos.first.flatMap(Self.urlTelefono) {
+            lista.append(Accion(id: "llamar", icono: .telefono, titulo: "Llamar") { abrirURL(tel) })
+        }
+        if let web = ficha?.webs.first {
+            lista.append(Accion(id: "web", icono: .web, titulo: "Sitio web") { abrirURL(web) })
+        }
+        lista.append(Accion(id: "guardar", icono: guardado ? .guardado : .guardar, titulo: guardado ? "Guardado" : "Guardar") {
+            favoritos.alternarGuardado(lugar)
+        })
+        let quedan = 3 - lista.count
+
+        return HStack(spacing: 8) {
+            Button { navegador.comoLlegar() } label: {
+                VStack(spacing: 5) {
+                    Icono(navegador.modo.icono, tamano: 21)
+                    Group {
+                        if let duracion = navegador.duracionPorModo[navegador.modo] {
+                            Text(FormatoRuta.duracion(duracion)).contentTransition(.numericText())
+                        } else if navegador.cargando {
+                            ProgressView().tint(.white).controlSize(.mini)
+                        } else {
+                            Text("Ir")
+                        }
                     }
+                    .font(.subheadline.weight(.semibold))
+                    .frame(height: 18)
                 }
-                .font(.headline)
                 .foregroundStyle(.white)
-                .frame(maxWidth: .infinity, minHeight: 50)
-                .background(Color.blue, in: Capsule())
+                .frame(maxWidth: .infinity, minHeight: 62)
+                .background(Color.blue, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .buttonStyle(.presionable)
+            .accessibilityLabel("Cómo llegar")
 
-            circulo(guardado ? .guardado : .guardar, guardado ? "Quitar de guardados" : "Guardar") {
-                favoritos.alternarGuardado(lugar)
+            ForEach(lista.prefix(3)) { accion in
+                Button(action: accion.hacer) { baldosa(accion.icono, accion.titulo) }
+                    .buttonStyle(.presionable)
             }
             .sensoryFeedback(.success, trigger: guardado)
 
-            ShareLink(item: Self.enlace(lugar), subject: Text(lugar.nombre),
-                      message: Text([lugar.nombre, lugar.subtitulo].filter { !$0.isEmpty }.joined(separator: "\n"))) {
-                iconoCirculo(.compartir)
-            }
-            .buttonStyle(.presionable)
-            .accessibilityLabel("Compartir")
-
-            Menu {
-                Button("Abrir en Apple Maps") { abrirURL(Self.enlace(lugar)) }
-                Button("Abrir en Google Maps") {
-                    abrirURL(URL(string: "https://www.google.com/maps/search/?api=1&query=\(lugar.coordenada.latitude),\(lugar.coordenada.longitude)")!)
+            if quedan > 0 {
+                ShareLink(item: Self.enlace(lugar), subject: Text(lugar.nombre),
+                          message: Text([lugar.nombre, Self.direccion(lugar)].filter { !$0.isEmpty }.joined(separator: "\n"))) {
+                    baldosa(.compartir, "Compartir")
                 }
-                Button("Abrir en Waze") {
-                    abrirURL(URL(string: "https://waze.com/ul?ll=\(lugar.coordenada.latitude),\(lugar.coordenada.longitude)&navigate=yes")!)
-                }
-                Divider()
-                Button("Guardar como Casa") { favoritos.ponerCasa(lugar) }
-                Button("Guardar como Trabajo") { favoritos.ponerTrabajo(lugar) }
-            } label: {
-                iconoCirculo(.abrirFuera)
+                .buttonStyle(.presionable)
             }
-            .accessibilityLabel("Más")
         }
     }
 
-    /// Llamar · Sitio web · Correo en baldosas iguales (solo las que tiene el negocio).
+    private func baldosa(_ icono: Lc, _ titulo: String) -> some View {
+        VStack(spacing: 5) {
+            Icono(icono, tamano: 21)
+            Text(titulo)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(height: 18)
+        }
+        .foregroundStyle(Color.blue)
+        .frame(maxWidth: .infinity, minHeight: 62)
+        .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    // MARK: De un vistazo
+
+    /// Franja de columnas con un título gris pequeño y el dato debajo, separadas por líneas finas.
     @ViewBuilder
-    private func contactoRapido(_ ficha: FichaLugar) -> some View {
-        let tel = ficha.telefonos.first.flatMap(Self.urlTelefono)
-        let web = ficha.webs.first
-        let correo = ficha.correo.flatMap { URL(string: "mailto:\($0)") }
-        if tel != nil || web != nil || correo != nil {
-            HStack(spacing: 10) {
-                if let tel { baldosa(.telefono, "Llamar") { abrirURL(tel) } }
-                if let web { baldosa(.web, "Sitio web") { abrirURL(web) } }
-                if let correo { baldosa(.correo, "Correo") { abrirURL(correo) } }
+    private func vistazo(_ lugar: Lugar, _ ficha: FichaLugar?) -> some View {
+        let columnas = columnasVistazo(lugar, ficha)
+        if columnas.count > 1 || (columnas.count == 1 && ficha != nil) {
+            HStack(spacing: 0) {
+                ForEach(columnas.indices, id: \.self) { i in
+                    if i > 0 {
+                        Rectangle().fill(Color.primary.opacity(0.1)).frame(width: 0.5, height: 30)
+                    }
+                    VStack(spacing: 4) {
+                        Text(columnas[i].titulo)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        columnas[i].valor
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
             }
+            .padding(.vertical, 2)
         }
     }
 
-    private func baldosa(_ icono: Lc, _ titulo: String, accion: @escaping () -> Void) -> some View {
-        Button(action: accion) {
-            VStack(spacing: 5) {
-                Icono(icono, tamano: 20)
-                Text(titulo).font(.caption.weight(.semibold))
+    private struct Columna {
+        let titulo: String
+        let valor: AnyView
+    }
+
+    private func columnasVistazo(_ lugar: Lugar, _ ficha: FichaLugar?) -> [Columna] {
+        var res: [Columna] = []
+        if let ficha {
+            if ficha.cerrado {
+                res.append(Columna(titulo: "Horario", valor: AnyView(Text("Cerró").foregroundStyle(.red))))
+            } else if let estado = ficha.horario?.estado() {
+                res.append(Columna(titulo: "Horario", valor: AnyView(
+                    Text(estado.abierto ? "Abierto" : "Cerrado").foregroundStyle(estado.abierto ? Color.green : Color.red))))
             }
-            .foregroundStyle(Color.blue)
-            .frame(maxWidth: .infinity, minHeight: 58)
-            .vidrio(RoundedRectangle(cornerRadius: 16, style: .continuous), interactivo: true)
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            if !ficha.pagos.isEmpty {
+                let iconos = Array(Set(ficha.pagos.map(Self.iconoPago))).sorted { $0.rawValue < $1.rawValue }.prefix(3)
+                res.append(Columna(titulo: "Acepta", valor: AnyView(
+                    HStack(spacing: 5) { ForEach(Array(iconos), id: \.self) { Icono($0, tamano: 17) } })))
+            }
+            if ficha.servicios.contains("Accesible en silla de ruedas") {
+                res.append(Columna(titulo: "Acceso", valor: AnyView(Icono(.accesible, tamano: 18))))
+            } else if ficha.servicios.contains("Entrega a domicilio") {
+                res.append(Columna(titulo: "Entrega", valor: AnyView(Icono(.entrega, tamano: 18))))
+            }
         }
-        .buttonStyle(.presionable)
+        if let aqui = navegador.ubicacion {
+            let metros = aqui.distance(from: .init(latitude: lugar.coordenada.latitude, longitude: lugar.coordenada.longitude))
+            res.append(Columna(titulo: "Distancia", valor: AnyView(Text(FormatoRuta.distancia(metros)))))
+        }
+        return Array(res.prefix(4))
     }
 
     // MARK: Fotos y descripción
 
     private func fotos(_ fotos: [FichaLugar.Foto]) -> some View {
         ScrollView(.horizontal) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 ForEach(fotos, id: \.url) { foto in
                     Button {
                         if let pagina = foto.pagina { abrirURL(pagina) }
@@ -206,9 +269,9 @@ struct HojaLugar: View {
                             default: ProgressView()
                             }
                         }
-                        .frame(width: fotos.count == 1 ? 350 : 230, height: 160)
-                        .fondoPieza(radio: 18)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .frame(width: fotos.count == 1 ? 350 : 200, height: 200)
+                        .fondoPieza(radio: 20)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                         .overlay(alignment: .bottomLeading) {
                             // Crédito obligatorio de Wikimedia Commons: autor y licencia.
                             let credito = [foto.autor, foto.licencia].compactMap { $0 }.joined(separator: " · ")
@@ -234,77 +297,81 @@ struct HojaLugar: View {
     }
 
     private func descripcion(_ texto: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            titulo("Acerca de")
+        VStack(alignment: .leading, spacing: 8) {
+            seccion("Acerca de")
             Text(texto)
-                .font(.subheadline)
+                .font(.body)
                 .lineLimit(descripcionAbierta ? nil : 3)
                 .fixedSize(horizontal: false, vertical: true)
             if texto.count > 140 {
-                Button(descripcionAbierta ? "Menos" : "Más") { descripcionAbierta.toggle() }
-                    .font(.subheadline.weight(.semibold))
+                botonMas(descripcionAbierta ? "Menos" : "Más") { descripcionAbierta.toggle() }
+            }
+        }
+    }
+
+    // MARK: Comodidades
+
+    /// Lista con ícono como «Para llevar», «Terraza», «Wi-Fi»; cinco a la vista y «Más».
+    private func comodidades(_ servicios: [String]) -> some View {
+        let visibles = todasComodidades ? servicios : Array(servicios.prefix(5))
+        return VStack(alignment: .leading, spacing: 12) {
+            seccion("Comodidades")
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(visibles, id: \.self) { texto in
+                    HStack(spacing: 12) {
+                        Icono(Self.iconoChip(texto), tamano: 19)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 26)
+                        Text(texto).font(.body)
+                    }
+                    .transition(.opacity)
+                }
+            }
+            if servicios.count > 5 {
+                botonMas(todasComodidades ? "Menos" : "Más") { todasComodidades.toggle() }
             }
         }
     }
 
     // MARK: Horario
 
-    /// Hoy arriba (con si está abierto); al tocar, la semana entera con hoy resaltado.
-    private func semana(_ horario: Horario) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            titulo("Horario")
+    /// «Abierto · cierra a las 9:00 p. m.» en color y la semana por grupos de días, con hoy en negrita.
+    private func semana(_ horario: Horario, cerrado: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            seccion("Horario")
+            if cerrado {
+                Text("Cerrado permanentemente").font(.body.weight(.semibold)).foregroundStyle(.red)
+            } else if let estado = horario.estado() {
+                Text(estado.texto)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(estado.abierto ? Color.green : Color.red)
+            }
             VStack(alignment: .leading, spacing: 0) {
                 if horario.estado() != nil {
-                    let hoy = Horario.hoy()
-                    Button { semanaAbierta.toggle() } label: {
-                        HStack(spacing: 10) {
-                            Icono(.horario, tamano: 17).foregroundStyle(.secondary)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Hoy").font(.footnote).foregroundStyle(.secondary)
-                                Text(horario.texto(dia: hoy)).font(.subheadline)
-                            }
-                            Spacer(minLength: 0)
-                            Icono(.flecha, tamano: 15)
-                                .foregroundStyle(.tertiary)
-                                .rotationEffect(.degrees(semanaAbierta ? 90 : 0))
+                    let grupos = horario.grupos()
+                    ForEach(grupos.indices, id: \.self) { i in
+                        if i > 0 { Divider().padding(.leading, 14) }
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(grupos[i].dias)
+                            Spacer(minLength: 12)
+                            Text(grupos[i].horas)
+                                .multilineTextAlignment(.trailing)
+                                .foregroundStyle(grupos[i].horas == "Cerrado" ? Color.secondary : Color.primary)
                         }
+                        .font(.subheadline.weight(grupos[i].hoy ? .semibold : .regular))
                         .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(semanaAbierta ? "Ocultar la semana" : "Ver la semana")
-
-                    if semanaAbierta {
-                        Divider().padding(.leading, 14)
-                        VStack(spacing: 8) {
-                            ForEach(0..<7, id: \.self) { dia in
-                                HStack {
-                                    Text(Horario.nombresES[dia])
-                                    Spacer()
-                                    Text(horario.texto(dia: dia))
-                                        .foregroundStyle(horario.texto(dia: dia) == "Cerrado" ? Color.secondary : Color.primary)
-                                }
-                                .font(.subheadline.weight(dia == hoy ? .semibold : .regular))
-                            }
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .padding(.vertical, 11)
                     }
                 } else {
                     // Formato que no se entiende (feriados, temporadas…): el texto tal cual.
-                    HStack(spacing: 10) {
-                        Icono(.horario, tamano: 17).foregroundStyle(.secondary)
-                        Text(horario.original).font(.subheadline).textSelection(.enabled)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
+                    Text(horario.original)
+                        .font(.subheadline)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
                 }
             }
             .fondoPieza()
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 
@@ -312,38 +379,36 @@ struct HojaLugar: View {
 
     private func detallesBasicos(_ lugar: Lugar) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            detalle("Dirección", [lugar.nombre, lugar.subtitulo].filter { !$0.isEmpty }.joined(separator: "\n")) {
-                copiar([lugar.nombre, lugar.subtitulo].filter { !$0.isEmpty }.joined(separator: ", "))
-            }
+            fila("Dirección", Self.direccion(lugar), copiable: true)
             Divider().padding(.leading, 14)
-            detalle("Coordenadas", Self.coordenadas(lugar), accion: nil)
+            fila("Coordenadas", Self.coordenadas(lugar), copiable: true)
         }
         .fondoPieza()
     }
 
-    /// Teléfonos, webs, correo, redes, dirección y coordenadas en una sola pieza.
+    /// A dos columnas, como una tarjeta de contacto: el nombre a la izquierda y el dato (en azul si se toca).
     private func detalles(_ lugar: Lugar, _ ficha: FichaLugar) -> some View {
-        let direccion = ficha.direccion ?? lugar.subtitulo
         var filas: [AnyView] = []
         for (i, tel) in ficha.telefonos.enumerated() {
-            filas.append(AnyView(enlaceFila(i == 0 ? "Teléfono" : "Otro teléfono", tel, .telefono, Self.urlTelefono(tel))))
+            filas.append(AnyView(fila(i == 0 ? "Teléfono" : "Otro teléfono", Self.telefonoBonito(tel), url: Self.urlTelefono(tel))))
         }
         for web in ficha.webs {
-            filas.append(AnyView(enlaceFila("Sitio web", Self.bonita(web), .web, web)))
+            filas.append(AnyView(fila("Sitio web", Self.bonita(web), url: web)))
         }
         if let correo = ficha.correo {
-            filas.append(AnyView(enlaceFila("Correo", correo, .arroba, URL(string: "mailto:\(correo)"))))
+            filas.append(AnyView(fila("Correo", correo, url: URL(string: "mailto:\(correo)"))))
         }
         for red in ficha.redes {
-            filas.append(AnyView(enlaceFila(red.nombre, Self.bonita(red.url), .enlace, red.url, marca: RedSocial(nombre: red.nombre))))
+            filas.append(AnyView(fila(red.nombre, Self.usuario(red.url), url: red.url, marca: RedSocial(nombre: red.nombre))))
         }
+        let direccion = Self.direccion(lugar)
         if !direccion.isEmpty {
-            filas.append(AnyView(detalle("Dirección", direccion) { copiar(direccion.replacingOccurrences(of: "\n", with: ", ")) }))
+            filas.append(AnyView(fila("Dirección", direccion, copiable: true)))
         }
-        filas.append(AnyView(detalle("Coordenadas", Self.coordenadas(lugar), accion: nil)))
+        filas.append(AnyView(fila("Coordenadas", Self.coordenadas(lugar), copiable: true)))
 
-        return VStack(alignment: .leading, spacing: 6) {
-            titulo("Detalles")
+        return VStack(alignment: .leading, spacing: 10) {
+            seccion("Detalles")
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(filas.indices, id: \.self) { i in
                     if i > 0 { Divider().padding(.leading, 14) }
@@ -354,88 +419,47 @@ struct HojaLugar: View {
         }
     }
 
-    /// Una fila que se toca para llamar o abrir (el valor en azul, como Apple Maps).
-    private func enlaceFila(_ titulo: String, _ valor: String, _ icono: Lc, _ url: URL?, marca: RedSocial? = nil) -> some View {
+    /// Una fila de detalles. Con `url` se toca (llamar, abrir); con `copiable`, al tocarla se copia.
+    /// Mantener pulsado siempre ofrece «Copiar».
+    private func fila(_ titulo: String, _ valor: String, url: URL? = nil, marca: RedSocial? = nil, copiable: Bool = false) -> some View {
         Button {
-            if let url { abrirURL(url) }
+            if let url { abrirURL(url) } else if copiable { copiar(valor.replacingOccurrences(of: "\n", with: ", ")) }
         } label: {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(titulo).font(.footnote).foregroundStyle(.secondary)
-                    Text(valor).font(.subheadline).foregroundStyle(Color.blue).lineLimit(1)
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                HStack(spacing: 8) {
+                    if let marca {
+                        // Logo de la red con su color (Facebook azul, WhatsApp verde, Instagram rosa…).
+                        marca.imagen
+                            .resizable()
+                            .renderingMode(.template)
+                            .scaledToFit()
+                            .frame(width: 18, height: 18)
+                            .foregroundStyle(marca.color)
+                            .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
+                            .accessibilityHidden(true)
+                    }
+                    Text(titulo).foregroundStyle(.secondary)
                 }
-                Spacer(minLength: 0)
-                if let marca {
-                    // Logo de la red con su color (Facebook azul, WhatsApp verde, Instagram rosa…).
-                    marca.imagen
-                        .resizable()
-                        .renderingMode(.template)
-                        .scaledToFit()
-                        .frame(width: 22, height: 22)
-                        .foregroundStyle(marca.color)
-                        .accessibilityHidden(true)
-                } else {
-                    Icono(icono, tamano: 17).foregroundStyle(Color.blue)
-                }
+                Spacer(minLength: 16)
+                Text(valor)
+                    .foregroundStyle(url != nil ? Color.blue : Color.primary)
+                    .multilineTextAlignment(.trailing)
+                    .lineLimit(url != nil ? 1 : 4)
+                    .truncationMode(.middle)
             }
+            .font(.subheadline)
             .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.vertical, 12)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button("Copiar") { copiar(valor) }
-        }
-    }
-
-    private func detalle(_ titulo: String, _ valor: String, accion: (() -> Void)?) -> some View {
-        HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(titulo)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                Text(valor)
-                    .font(.subheadline)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-            }
-            Spacer(minLength: 0)
-            if let accion {
-                Button(action: accion) {
-                    Icono(copiado ? .guardado : .copiar, tamano: 17)
-                        .foregroundStyle(Color.blue)
-                        .frame(width: 36, height: 36)
-                        .contentTransition(.opacity)
-                }
-                .buttonStyle(.presionable)
-                .accessibilityLabel(copiado ? "Copiado" : "Copiar dirección")
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-    }
-
-    // MARK: Servicios, pagos y fuente
-
-    private func chips(_ seccion: String, _ textos: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            titulo(seccion)
-            FilaFlexible(espacio: 8) {
-                ForEach(textos, id: \.self) { texto in
-                    HStack(spacing: 6) {
-                        Icono(Self.iconoChip(texto), tamano: 14).foregroundStyle(.secondary)
-                        Text(texto).font(.subheadline)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .fondoPieza(radio: 100)
-                }
-            }
+            Button("Copiar") { copiar(valor.replacingOccurrences(of: "\n", with: ", ")) }
         }
     }
 
     private func fuente(_ ficha: FichaLugar) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             if let atribucion = ficha.atribucion {
                 Text("Datos: \(atribucion)")
             }
@@ -453,31 +477,28 @@ struct HojaLugar: View {
 
     // MARK: Piezas
 
-    private func titulo(_ texto: String) -> some View {
-        Text(texto)
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .padding(.leading, 4)
+    private func seccion(_ texto: String) -> some View {
+        Text(texto).font(.title3.weight(.bold))
     }
 
-    private func circulo(_ icono: Lc, _ etiqueta: String, accion: @escaping () -> Void) -> some View {
-        Button(action: accion) { iconoCirculo(icono) }
-            .buttonStyle(.presionable)
-            .accessibilityLabel(etiqueta)
-    }
-
-    private func iconoCirculo(_ icono: Lc) -> some View {
-        Icono(icono, tamano: 19)
-            .foregroundStyle(Color.blue)
-            .frame(width: 50, height: 50)
-            .vidrio(Circle(), interactivo: true)
-            .contentShape(Circle())
+    private func botonMas(_ texto: String, accion: @escaping () -> Void) -> some View {
+        Button(action: accion) {
+            Text(texto.uppercased())
+                .font(.footnote.weight(.semibold))
+                .tracking(0.6)
+                .foregroundStyle(Color.blue)
+        }
+        .buttonStyle(.presionable)
     }
 
     private func copiar(_ texto: String) {
         UIPasteboard.general.string = texto
-        copiado = true
-        Task { try? await Task.sleep(for: .seconds(1.5)); copiado = false }
+        copiado.toggle()
+    }
+
+    private static func direccion(_ lugar: Lugar) -> String {
+        if let d = lugar.ficha?.direccion { return d }
+        return [lugar.nombre, lugar.subtitulo].filter { !$0.isEmpty }.joined(separator: "\n")
     }
 
     private static func coordenadas(_ lugar: Lugar) -> String {
@@ -490,12 +511,29 @@ struct HojaLugar: View {
         return limpio.isEmpty ? nil : URL(string: "tel:\(limpio)")
     }
 
+    /// «+13057868520» → «+1 (305) 786-8520» (números de EE. UU.; los demás, tal cual).
+    static func telefonoBonito(_ telefono: String) -> String {
+        var d = telefono.filter(\.isNumber)
+        if d.count == 11, d.hasPrefix("1") { d.removeFirst() }
+        guard d.count == 10 else { return telefono }
+        let a = d.prefix(3), b = d.dropFirst(3).prefix(3), c = d.suffix(4)
+        return "+1 (\(a)) \(b)-\(c)"
+    }
+
     /// «https://www.ejemplo.com/» → «ejemplo.com»
     private static func bonita(_ url: URL) -> String {
         var t = url.absoluteString
         for prefijo in ["https://", "http://", "www."] where t.hasPrefix(prefijo) { t.removeFirst(prefijo.count) }
         if t.hasSuffix("/") { t.removeLast() }
         return t
+    }
+
+    /// De una red, lo corto: «instagram.com/factoria» → «@factoria»; si es un número largo, «Ver perfil».
+    private static func usuario(_ url: URL) -> String {
+        let ultimo = url.pathComponents.filter { $0 != "/" }.last ?? ""
+        if ultimo.isEmpty { return bonita(url) }
+        if ultimo.allSatisfy(\.isNumber) || ultimo.count > 30 || ultimo.hasSuffix(".php") { return "Ver perfil" }
+        return ultimo.hasPrefix("@") ? ultimo : "@\(ultimo)"
     }
 
     private static func iconoChip(_ texto: String) -> Lc {
@@ -509,7 +547,15 @@ struct HojaLugar: View {
         case "Wi-Fi": .wifi
         case "Accesible en silla de ruedas", "Accesibilidad limitada": .accesible
         case "Opciones veganas", "Opciones vegetarianas", "Sin gluten", "Halal", "Kosher": .hoja
-        case "Efectivo": .etiqueta
+        default: .verificado
+        }
+    }
+
+    private static func iconoPago(_ texto: String) -> Lc {
+        switch texto {
+        case "Efectivo", "Cheque": .efectivo
+        case "Sin contacto": .sinContacto
+        case "Apple Pay", "Google Pay": .movil
         default: .tarjeta
         }
     }
