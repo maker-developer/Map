@@ -101,7 +101,7 @@ function nombres(p, r) {
       filter: ['all', ['!=', ['get', 'name'], ''], ['!', esClase(['rampa', 'servicio'])]],
       layout: { 'symbol-placement': 'line', 'symbol-spacing': 220, 'text-field': ['get', 'name'],
         'text-font': ['match', clase, grande, ['literal', ['DMSans-SemiBold']], ['literal', ['DMSans-Regular']]],
-        'text-max-angle': 35,
+        'text-max-angle': 35, 'text-transform': 'uppercase', 'text-letter-spacing': .06,
         'symbol-sort-key': ['match', clase, 'autopista', 1, 'principal', 2, 'avenida', 3, 'colectora', 4, 5],
         'text-size': ['interpolate', ['linear'], ['zoom'],
           13.5, ['match', clase, grande, 10.5, 9.5], 18, ['match', clase, grande, 14, 12.5]] },
@@ -141,7 +141,8 @@ export function baseStyle(theme) {
       'DMSans-SemiBold': [{ url: fuente('DMSans-SemiBold') }],
       'DMSans-Italic': [{ url: fuente('DMSans-Italic') }],
     },
-    light: { anchor: 'map', intensity: .45, color: '#fff5e5', position: [1.15, 210, 35] },
+    // Luz blanca neutra: las torres se ven grises (con luz cálida salían beige).
+    light: { anchor: 'map', intensity: .38, color: '#ffffff', position: [1.15, 210, 35] },
     sources: {
       base: { type: 'vector', url: 'pmtiles:///data/base.pmtiles' },
       towns: { type: 'geojson', data: townLocations },
@@ -182,7 +183,7 @@ export function applyTheme(map, theme) {
       const extras = previous.layers.filter(layer => layer.source === 'buildings' || layer.source === 'transit');
       const recolored = extras.map(layer => {
         if (layer.id === 'buildings-footprints') {
-          return { ...layer, paint: { ...layer.paint, 'fill-color': palette.building, 'fill-outline-color': palette.buildingOutline } };
+          return { ...layer, paint: { ...layer.paint, 'fill-color': footprintColor(palette), 'fill-outline-color': palette.buildingOutline } };
         }
         if (layer.id === 'buildings-volume') {
           return { ...layer, paint: { ...layer.paint, 'fill-extrusion-color': buildingColor(palette) } };
@@ -232,7 +233,7 @@ export function buildingLayers(palette) {
   const color = buildingColor(palette);
   return [
     { id: 'buildings-footprints', source: 'buildings', 'source-layer': 'edificios', type: 'fill', minzoom: 13,
-      paint: { 'fill-color': palette.building, 'fill-outline-color': palette.buildingOutline } },
+      paint: { 'fill-color': footprintColor(palette), 'fill-outline-color': palette.buildingOutline } },
     { id: 'buildings-volume', source: 'buildings', 'source-layer': 'edificios', type: 'fill-extrusion', minzoom: 13,
       filter: ['!=', ['get', 'height'], null],
       paint: { 'fill-extrusion-height': ['get', 'height'], 'fill-extrusion-color': color,
@@ -240,9 +241,26 @@ export function buildingLayers(palette) {
   ];
 }
 
+// Torres en grises según la altura; casas (menos de 12 m) en uno de seis pasteles.
+// El decimal de la altura elige el pastel: cada casa sale de un color distinto, pero siempre el mismo.
 function buildingColor(palette) {
-  return ['interpolate', ['linear'], ['coalesce', ['get', 'height'], 0],
-    0, palette.buildingLow, 15, palette.buildingLow, 46, palette.buildingMid, 120, palette.buildingHigh, 200, palette.buildingHigh];
+  const altura = ['coalesce', ['get', 'height'], 0];
+  const torres = ['interpolate', ['linear'], altura,
+    0, palette.buildingLow, 20, palette.buildingLow, 60, palette.buildingMid, 150, palette.buildingHigh];
+  if (!palette.casas) return torres;
+  return ['case', ['<', altura, 12], pastel(palette, ['*', altura, 10]), torres];
+}
+
+// Uno de los pasteles de `palette.casas` a partir de un número (altura o largo de la dirección).
+function pastel(palette, numero) {
+  const indice = ['%', ['round', numero], palette.casas.length];
+  return ['match', indice, ...palette.casas.flatMap((color, i) => [i, color]), palette.casas[0]];
+}
+
+// Huellas sin altura (en planta): pastel según el largo de la dirección.
+function footprintColor(palette) {
+  if (!palette.casas) return palette.building;
+  return pastel(palette, ['length', ['coalesce', ['get', 'address'], '']]);
 }
 
 const townLocations = {

@@ -39,6 +39,7 @@
 | Claude | El mismo estilo en el visor web, paletas `ronda1` en `styles/base-*.js`, escudos en canvas, edificios encima de calles y transporte, la vista en la dirección (`#zoom/lat/lon/rumbo/inclinación`) | `viewers/web/src/`, `styles/` | Validado con el validador oficial de MapLibre (42 capas, sin errores) y probado en el navegador |
 | Claude | Arreglo: el visor web fallaba al cargar las rutas («features is not iterable»); el transporte quedaba encendido y el filtro vacío | `viewers/web/src/main.js` | Ya carga las 127 rutas |
 | Claude | DM Sans Italic (instancia estática 9 pt, 400) para los nombres del agua | `styles/fonts/`, `styles/glifos/DMSans-Italic/` | OFL, como las demás DM Sans |
+| Claude | **Colores nuevos** (pedido del dueño, inspirados en Apple Maps sin copiarlos): tierra blanco cálido, agua celeste por profundidad, parques verde fresco, calles grises con borde claro, torres grises con luz neutra, **casas en seis pasteles** (cada casa de un color, siempre el mismo), nombres de calles en mayúsculas espaciadas; modo oscuro grafito con agua azul noche | `styles/base-*.js`, `EstiloMapa.swift`, `EstiloRonda1.swift`, `style.js` | En Map Lab, «Antes» conserva los colores anteriores para comparar |
 
 ## Probar (el dueño, en el iPhone)
 
@@ -50,6 +51,7 @@ En Map Lab, experimento **Ronda 1**, con el interruptor Antes / Después:
 4. **Bahía de Biscayne:** ¿se nota la profundidad (más claro cerca de la costa)?
 5. **Nombres del agua:** ¿salen Biscayne Bay y Miami River, y el del río sigue su curva?
 6. **Modo oscuro:** lo mismo de noche: ¿se lee todo?
+6b. **Colores:** comparar con Apple Maps en las mismas zonas (Key Biscayne, Brickell, un barrio de casas): ¿tierra, agua, parques, torres grises y casas pastel se sienten igual de agradables?
 7. **Rendimiento:** en el panel de medidas, ¿el primer dibujo y los cuadros/s son parecidos a antes?
 
 Mandar una captura de cada punto (antes y después) y lo que guste o no. Con eso se abre la ronda 2.

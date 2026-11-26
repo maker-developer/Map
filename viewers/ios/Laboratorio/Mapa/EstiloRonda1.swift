@@ -24,25 +24,25 @@ extension EstiloMapa {
         switch tema {
         case .claro:
             PaletaRonda1(
-                autopista: "#f7d58f", autopistaBorde: "#d9a95c",
-                principal: "#ffffff", principalBorde: "#cdbfa6",
-                avenida: "#ffffff", avenidaBorde: "#d9cfbd",
-                local: "#fffdf8", localBorde: "#e4dccc",
-                servicio: "#f6f1e6", peatonal: "#ead9c4", puenteSombra: "#5b4a33",
-                arena: "#f4e6c3", arenaBorde: "#e6d2a3",
-                profundidad: ["#bfe6e6", "#aedcdf", "#98ced5", "#83bfca", "#6eafbd"],
-                aguaTexto: "#3f7f8c", aguaHalo: "#cbe9ea"
+                autopista: "#f9d57c", autopistaBorde: "#e4b456",
+                principal: "#b3b8bb", principalBorde: "#fbfbf9",
+                avenida: "#bec2c5", avenidaBorde: "#fbfbf9",
+                local: "#c9ccce", localBorde: "#fbfbf9",
+                servicio: "#d8dadb", peatonal: "#e9dcc9", puenteSombra: "#3d4a52",
+                arena: "#f6edd1", arenaBorde: "#ece0bc",
+                profundidad: ["#bde5f7", "#aedcf4", "#9cd4f1", "#8bcaec", "#79bfe6"],
+                aguaTexto: "#4b88ab", aguaHalo: "#c9e9f8"
             )
         case .oscuro:
             PaletaRonda1(
-                autopista: "#8a6d3e", autopistaBorde: "#4e3d22",
-                principal: "#5a615b", principalBorde: "#1a1f1d",
-                avenida: "#4c534e", avenidaBorde: "#1a1f1d",
-                local: "#3b423e", localBorde: "#222826",
-                servicio: "#323834", peatonal: "#4a4237", puenteSombra: "#000000",
-                arena: "#4a4434", arenaBorde: "#5a5240",
-                profundidad: ["#24464d", "#20404a", "#1c3944", "#18323d", "#142b36"],
-                aguaTexto: "#8fbfc6", aguaHalo: "#16303a"
+                autopista: "#7a6334", autopistaBorde: "#4a3b1f",
+                principal: "#50555a", principalBorde: "#141618",
+                avenida: "#474c51", avenidaBorde: "#141618",
+                local: "#3c4044", localBorde: "#191b1d",
+                servicio: "#33373a", peatonal: "#4a4237", puenteSombra: "#000000",
+                arena: "#3d3827", arenaBorde: "#4a4430",
+                profundidad: ["#2c5470", "#264b65", "#21435a", "#1c3a4f", "#173244"],
+                aguaTexto: "#8fbad8", aguaHalo: "#172b3a"
             )
         }
     }
@@ -213,7 +213,7 @@ extension EstiloMapa {
                 "symbol-placement": "line", "symbol-spacing": 220, "text-field": ["get", "name"],
                 "text-font": ["match", Self.clase, ["autopista", "principal"], ["literal", ["DMSans-SemiBold"]],
                               ["literal", ["DMSans-Regular"]]],
-                "text-max-angle": 35,
+                "text-max-angle": 35, "text-transform": "uppercase", "text-letter-spacing": 0.06,
                 "symbol-sort-key": ["match", Self.clase, "autopista", 1, "principal", 2, "avenida", 3, "colectora", 4, 5],
                 "text-size": ["interpolate", ["linear"], ["zoom"],
                               13.5, ["match", Self.clase, ["autopista", "principal"], 10.5, 9.5],
