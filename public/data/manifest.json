@@ -8,7 +8,8 @@
     "calles": {
       "file": "calles.geojson",
       "count": 116465,
-      "bytes": 26347683
+      "bytes": 26347683,
+      "withVmax": 4256
     },
     "agua": {
       "file": "agua.geojson",
@@ -59,7 +60,7 @@
     },
     "base": {
       "file": "base.pmtiles",
-      "bytes": 19055260
+      "bytes": 19131161
     },
     "transit": {
       "file": "transit.pmtiles",
@@ -89,82 +90,46 @@
       "bytes": 11170
     },
     "limites-velocidad": {
-      "source": "Florida Department of Transportation, Roadway Characteristics Inventory (RCI), Feature 311 MAXSPEED",
+      "source": "FDOT RCI Feature 311 MAXSPEED; ROADWAY/POST range joined to LOCALNAM and Street Network by name and geometry",
       "sourceUrl": "https://services1.arcgis.com/O1JpcwDW8sjYuddV/ArcGIS/rest/services/Maximum_Speed_Limit_TDA/FeatureServer/0",
       "sourceItem": "https://www.arcgis.com/home/item.html?id=4a61f17ab4784202ae10d7d5fb3bf9de",
-      "url": "https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/limites-velocidad/v1/limites-velocidad.pmtiles",
+      "sourceUpdated": "2026-11-23",
       "attribution": "Fuente: Florida Department of Transportation (FDOT), RCI Feature 311 MAXSPEED",
       "terms": "FDOT GIS is provided as is, without warranties; published inventory may not reflect current conditions.",
       "termsUrl": "https://www.fdot.gov/statistics/gis/default.shtm",
-      "sourceUpdated": "2026-11-23",
       "coverageScope": "FDOT designated State Highway System roads and HPMS samples; not all local streets",
-      "captured": "2026-11-26",
-      "count": 1652,
-      "counties": {
-        "Miami-Dade": {
-          "count": 1109,
-          "byMph": {
-            "15": 1,
-            "20": 26,
-            "25": 21,
-            "30": 357,
-            "35": 233,
-            "40": 263,
-            "45": 133,
-            "50": 15,
-            "55": 45,
-            "60": 9,
-            "65": 4,
-            "70": 2
-          }
-        },
-        "Broward": {
-          "count": 335,
-          "byMph": {
-            "15": 1,
-            "20": 2,
-            "25": 34,
-            "30": 50,
-            "35": 89,
-            "40": 46,
-            "45": 90,
-            "50": 7,
-            "55": 5,
-            "60": 2,
-            "65": 7,
-            "70": 2
-          }
-        },
-        "Monroe": {
-          "count": 208,
-          "byMph": {
-            "20": 3,
-            "25": 15,
-            "30": 34,
-            "35": 11,
-            "45": 88,
-            "50": 21,
-            "55": 36
-          }
-        }
-      },
-      "verifiedSpeedsOnly": true,
+      "file": "base.pmtiles",
+      "vectorLayer": "calles",
+      "property": "vmax",
       "units": "mph",
-      "file": "limites-velocidad.pmtiles",
-      "bytes": 2735082,
-      "minzoom": 7,
-      "maxzoom": 16,
-      "vectorLayer": "limites-velocidad",
-      "properties": [
-        "limite_mph",
-        "condado",
-        "roadway",
-        "lado",
-        "direccion_offset",
-        "inicio_milla",
-        "fin_milla",
-        "fuente"
-      ]
+      "count": 1652,
+      "speedRecordsMatched": 643,
+      "streetFeaturesWithVmax": 4256,
+      "streetFeatures": 116465,
+      "matching": {
+        "maxDistanceM": 5,
+        "minStreetCoverage": 0.95,
+        "maxAngleDegrees": 15,
+        "requiresRoadwayAndMileRangeName": true
+      },
+      "byCounty": {
+        "Miami-Dade": 643,
+        "Broward": 0,
+        "Monroe": 0
+      },
+      "byMph": {
+        "20": 15,
+        "25": 40,
+        "30": 1478,
+        "35": 860,
+        "40": 1311,
+        "45": 497,
+        "50": 18,
+        "55": 37
+      },
+      "onlyExplicitValues": true,
+      "url": "https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/v6/base.pmtiles",
+      "sidecarUrl": "https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/limites-velocidad/v1/limites-velocidad.pmtiles"
     }
   },
   "zones": {

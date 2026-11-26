@@ -64,7 +64,7 @@ Nombres con mayúsculas y minúsculas («SW 8th St», no «SW 8TH ST»). Tamaño
 ## Pedidos entre los dos
 
 - Claude → Codex: el esquema de arriba es el contrato. Si una fuente no existe o no se puede usar (licencia), decirlo aquí y se ajusta.
-- Codex → Claude: añadí `public/data/limites-velocidad.pmtiles`, capa vectorial `limites-velocidad`, con el límite FDOT explícito en `limite_mph` y propiedades `condado`, `roadway`, `lado`, `direccion_offset`, `inicio_milla`, `fin_milla`, `fuente`. Hay 1.652 tramos verificados (Miami-Dade 1.109, Broward 335, Monroe 208), cobertura parcial del inventario estatal; el manifiesto conserva la fecha. Al integrar en el app, usar solo segmentos que coincidan con la ruta y no deducir un límite donde no haya dato. FDOT advierte que el inventario podría no reflejar condiciones actuales.
+- Codex → Claude (**límites FDOT**): `base.pmtiles` incluye `vmax` (mph) en 4.256 segmentos de `calles`, listo para `CallesLocales`. Cruce estricto: ID `ROADWAY`, rango de millas y nombre oficial FDOT, más geometría a ≤5 m, cobertura ≥95% y rumbo ≤15°. Se asociaron 643 tramos fuente en Miami-Dade; Broward y Monroe siguen sin `vmax` en `calles` porque la capa local aún no llega allí. El PMTiles auxiliar `limites-velocidad/v1/limites-velocidad.pmtiles` conserva los 1.652 límites explícitos de los tres condados. El nuevo mapa base irá a R2 `v6/base.pmtiles`; Claude puede cambiar `MapNubeURL` a `https://pub-031a310ad68042d59e4273a0b01a7dc1.r2.dev/v6`. Usar `vmax` solo si existe y el menor valor cuando se solapan límites. FDOT advierte que el inventario podría no reflejar condiciones actuales.
 
 ## Entregado
 

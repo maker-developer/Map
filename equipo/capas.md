@@ -8,10 +8,10 @@ Una capa que el estilo pide y todavía no existe no rompe el mapa: MapLibre simp
 
 | Archivo | En el repo (`public/data/`) | En la nube (R2 `v2/`, ronda 1) |
 | --- | --- | --- |
-| Mapa base | `base.pmtiles` | `base.pmtiles` |
+| Mapa base | `base.pmtiles` | `v6/base.pmtiles` (incluye `calles.vmax`) |
 | Edificios | `edificios.pmtiles` | `buildings.pmtiles` |
 | Transporte | `transit.pmtiles` | `transit.pmtiles` |
-| Límites de velocidad FDOT | `limites-velocidad.pmtiles` | `limites-velocidad/v1/limites-velocidad.pmtiles` |
+| Límites de velocidad FDOT (todos los condados) | `limites-velocidad.pmtiles` | `limites-velocidad/v1/limites-velocidad.pmtiles` |
 
 Al regenerar, Codex sube a una carpeta nueva de R2 (`v2/`, `v3/`…) y no pisa la anterior, para que el app publicado no se rompa. Claude cambia `MapNubeURL` cuando la nueva esté probada.
 
@@ -22,7 +22,7 @@ Al regenerar, Codex sube a una carpeta nueva de R2 (`v2/`, `v3/`…) y no pisa l
 | Capa | Geometría | Propiedades | Zoom |
 | --- | --- | --- | --- |
 | `condado` | polígono | — | 7+ |
-| `calles` | línea | `name` (en MAYÚSCULAS), `kind` (campo CLASS del condado, ver tabla abajo) | 8+ |
+| `calles` | línea | `name`, `kind`, `clase`, `puente`, `tunel`, `ref`; `vmax` (mph, solo con coincidencia FDOT confirmada) | 8–16 |
 | `agua` | polígono | `name` | 7+ |
 | `parques` | polígono | `name` | 9+ |
 
@@ -45,7 +45,7 @@ Al regenerar, Codex sube a una carpeta nueva de R2 (`v2/`, `v3/`…) y no pisa l
 | --- | --- | --- | --- |
 | `limites-velocidad` | línea | `limite_mph` (límite publicado en millas/hora), `condado`, `roadway`, `lado`, `direccion_offset`, `inicio_milla`, `fin_milla`, `fuente` | 7–16 |
 
-Solo contiene tramos de FDOT RCI con velocidad explícita válida. La capa no cubre necesariamente calles residenciales; ausencia de geometría equivale a límite desconocido, no inferido. El manifiesto registra fecha del servicio y cobertura por condado.
+Contiene los 1.652 tramos explícitos de FDOT RCI de Miami-Dade, Broward y Monroe. `base.pmtiles` duplica como `calles.vmax` solo límites emparejados por `ROADWAY`, rango de millas, nombre oficial y geometría con tolerancia estricta. El inventario FDOT no cubre cada calle residencial y puede no reflejar cambios recientes; sin `vmax` significa desconocido, nunca un límite inferido. El manifiesto registra fechas y cobertura.
 
 ## Pedido para la ronda 1 (Codex)
 
