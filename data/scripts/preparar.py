@@ -4,6 +4,7 @@ import argparse
 import concurrent.futures
 import json
 from pathlib import Path
+import re
 import subprocess
 import time
 from urllib.parse import urlencode
@@ -92,7 +93,10 @@ def layer_meta(file, features):
 def build(name, layer, fields, transform, refresh, **options):
     filename = f"{name}.geojson"
     path = DATOS / filename
-    if refresh or not path.exists():
+    needs_street_schema = name == "calles" and path.exists() and any(
+        "clase" not in row.get("properties", {}) for row in json.loads(path.read_text()).get("features", [])[:1]
+    )
+    if refresh or not path.exists() or needs_street_schema:
         rows = [transform(row) for row in fetch(layer, fields, **options)]
         write(filename, collection(rows))
     else:
@@ -175,7 +179,40 @@ def street(row):
     props = row["properties"]
     name = (props.get("SNAME") or props.get("ST_NAME") or "").strip()
     kind = str(props.get("CLASS") or "")
-    return feature(row["geometry"], name=name, kind=kind)
+    classes = {
+        "0": "rampa", "1": "autopista", "2": "avenida", "3": "avenida",
+        "4": "colectora", "5": "local", "6": "servicio", "7": "servicio",
+        "8": "servicio", "9": "servicio",
+    }
+    ramp = truthy(props.get("RAMP")) or kind == "0" or " RAMP" in name.upper()
+    bridge = truthy(props.get("BRIDGE")) or any(
+        str(props.get(key) or "0") not in {"", "0", "None"} for key in ("F_ZLEV", "T_ZLEV")
+    )
+    return feature(row["geometry"], name=name, kind=kind, clase="rampa" if ramp else classes.get(kind, "local"),
+                   puente=bridge, tunel=truthy(props.get("TUNNEL")), ref=street_ref(name))
+
+
+def street_ref(name):
+    upper = re.sub(r"\s+", " ", name.upper()).strip()
+    if "FLORIDA TPKE" in upper or "FLORIDA TURNPIKE" in upper:
+        return "FL Turnpike"
+    for pattern, prefix in ((r"\bI\s*[- ]?\s*(\d+)\b", "I-"),
+                            (r"\bUS\s*[- ]?\s*(\d+)\b", "US-"),
+                            (r"\bSR\s*[- ]?\s*(\d+[A-Z]?)\b", "SR-")):
+        match = re.search(pattern, upper)
+        if match:
+            return prefix + match.group(1)
+    aliases = {
+        "BISCAYNE BLVD": "US-1", "S BISCAYNE BLVD": "US-1",
+        "S DIXIE HWY": "US-1", "S FEDERAL HWY": "US-1",
+        "W OKEECHOBEE RD": "US-27", "E OKEECHOBEE RD": "US-27",
+        "KROME AVE": "SR-997", "N KROME AVE": "SR-997", "S KROME AVE": "SR-997",
+    }
+    return aliases.get(upper, "")
+
+
+def truthy(value):
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y", "t"}
 
 
 def named(row):
@@ -231,7 +268,8 @@ def main():
     bundle = read_bundle(args.gtfs_datos)
     build_jobs = [
         ("condado", COUNTY, "NAME", named, {"where": "GEOID='12086'", "simplify": 0.00004}),
-        ("calles", service("StreetNetwork_gdb"), "SNAME,ST_NAME,CLASS", street, {"simplify": 0.000008}),
+        ("calles", service("StreetNetwork_gdb"),
+         "SNAME,ST_NAME,CLASS,RAMP,BRIDGE,TUNNEL,F_ZLEV,T_ZLEV", street, {"simplify": 0.000008}),
         ("agua", service("Water_gdb"), "NAME", named, {"simplify": 0.000014}),
         ("parques", service("MunicipalParkBoundary_gdb"), "NAME", named, {"simplify": 0.00001}),
     ]
