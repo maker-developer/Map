@@ -253,7 +253,8 @@ final class CallesLocales: @unchecked Sendable {
 
     /// ID de tesela de PMTiles (curva de Hilbert), igual que `zxy_to_tileid` de la referencia.
     static func idTesela(z: Int, x: Int, y: Int) -> UInt64 {
-        var acc = (UInt64(1) << UInt64(z * 2) - 1) / 3
+        let limite = UInt64(1) << UInt64(z)
+        var acc = ((UInt64(1) << UInt64(z * 2)) - 1) / 3
         var x = UInt64(x), y = UInt64(y)
         var a = z - 1
         while a >= 0 {
@@ -261,7 +262,7 @@ final class CallesLocales: @unchecked Sendable {
             let rx = s & x, ry = s & y
             acc += ((3 * rx) ^ ry) << UInt64(a)
             if ry == 0 {
-                if rx != 0 { x = s - 1 - x; y = s - 1 - y }
+                if rx != 0 { x = limite - 1 - x; y = limite - 1 - y }
                 swap(&x, &y)
             }
             a -= 1
