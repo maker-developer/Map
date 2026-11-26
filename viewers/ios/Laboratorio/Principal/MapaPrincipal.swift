@@ -115,35 +115,23 @@ struct MapaPrincipal: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        // Navegando: la velocidad actual (como Google Maps)…
-        .overlay(alignment: modoPanel ? .bottomTrailing : .bottomLeading) {
-            if navegador.fase == .navegando, navegador.siguiendo, !navegador.llegaste {
-                BurbujaVelocidad(metrosPorSegundo: navegador.velocidad, limiteMph: navegador.limiteVelocidad)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, modoPanel ? 16 : 128)
-                    .transition(.opacity)
-            }
-        }
-        // …y con el mapa movido a mano, «Volver a centrar», como Apple y Google.
-        .overlay(alignment: modoPanel ? .bottomTrailing : .bottomLeading) {
-            if navegador.fase == .navegando, !navegador.siguiendo {
-                Button {
-                    navegador.recentrar()
-                } label: {
-                    HStack(spacing: 8) {
-                        Icono(.navegar, tamano: 17)
-                        Text("Volver a centrar")
-                            .font(.subheadline.weight(.semibold))
+        // Navegando: la velocidad (con el límite debajo) a la izquierda y, si moviste el mapa a mano,
+        // el botón redondo de volver a centrar a la derecha, a la misma altura que la burbuja.
+        // Con el panel lateral, los dos juntos abajo a la derecha.
+        .overlay(alignment: .bottom) {
+            if navegador.fase == .navegando, !navegador.llegaste {
+                HStack(alignment: .top, spacing: 12) {
+                    if modoPanel { Spacer(minLength: 0) }
+                    if modoPanel { botonRecentrar }
+                    BurbujaVelocidad(metrosPorSegundo: navegador.velocidad, limiteMph: navegador.limiteVelocidad)
+                    if !modoPanel {
+                        Spacer(minLength: 0)
+                        botonRecentrar
                     }
-                    .foregroundStyle(Color.blue)
-                    .padding(.horizontal, 16)
-                    .frame(height: 46)
-                    .vidrio(Capsule(), interactivo: true)
                 }
-                .buttonStyle(.plain)
                 .padding(.horizontal, 16)
                 .padding(.bottom, modoPanel ? 16 : 128)
-                .transition(.scale(scale: 0.8).combined(with: .opacity))
+                .transition(.opacity)
             }
         }
         .animation(.snappy, value: navegador.fase)
@@ -225,6 +213,26 @@ struct MapaPrincipal: View {
             if nuevo != nil, hoja == .height(HojaBusqueda.alturaMinima) { hoja = .height(HojaBusqueda.alturaFicha) }
         }
         .sensoryFeedback(.selection, trigger: vista3D)
+    }
+
+    /// Volver a centrar: un círculo de vidrio con la flecha, del tamaño de la burbuja de velocidad.
+    /// Solo aparece si moviste el mapa a mano.
+    @ViewBuilder
+    private var botonRecentrar: some View {
+        if !navegador.siguiendo {
+            Button {
+                navegador.recentrar()
+            } label: {
+                Icono(.navegar, tamano: 22)
+                    .foregroundStyle(Color.blue)
+                    .frame(width: 62, height: 62)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .vidrio(Circle(), interactivo: true)
+            .accessibilityLabel("Volver a centrar")
+            .transition(.scale(scale: 0.6).combined(with: .opacity))
+        }
     }
 
     // MARK: - Contenido de la hoja o del panel
